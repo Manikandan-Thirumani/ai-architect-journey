@@ -1,0 +1,22 @@
+[
+  {
+    "topic": "PremiumLoan",
+    "questionKeyword": "premium customers",
+    "content": "Premium customers can receive loans up to 50 lakhs after risk verification."
+  },
+  {
+    "topic": "PremiumAgeLimit",
+    "questionKeyword": "max age",
+    "content": "Maximum eligible age for premium customers is 60 years."
+  },
+  {
+    "topic": "HomeLoan",
+    "questionKeyword": "home loan",
+    "content": "Home loan interest rate starts from 8.5%."
+  },
+  {
+    "topic": "GoldLoan",
+    "questionKeyword": "gold loan",
+    "content": "Gold loans are approved within 24 hours."
+  }
+]

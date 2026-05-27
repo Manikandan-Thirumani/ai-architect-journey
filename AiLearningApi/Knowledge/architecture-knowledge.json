@@ -1,0 +1,14 @@
+[
+  {
+    "topic": "CQRS",
+    "content": "CQRS separates read and write operations into different models."
+  },
+  {
+    "topic": "Microservices",
+    "content": "Microservices are independently deployable services communicating over APIs."
+  },
+  {
+    "topic": "CleanArchitecture",
+    "content": "Clean Architecture separates domain, infrastructure, application, and presentation layers."
+  }
+]
