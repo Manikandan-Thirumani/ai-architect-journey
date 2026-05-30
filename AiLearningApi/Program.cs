@@ -32,6 +32,8 @@ builder.Services
 
 builder.Services
     .AddSingleton<BankingRagService>();
+builder.Services
+    .AddSingleton<EmbeddingService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

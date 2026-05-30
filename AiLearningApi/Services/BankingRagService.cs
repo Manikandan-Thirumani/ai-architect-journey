@@ -1,4 +1,5 @@
-﻿using Microsoft.SemanticKernel;
+﻿using AiLearningApi.Helpers;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Ollama;
 
 namespace AiLearningApi.Services;
@@ -9,12 +10,17 @@ public class BankingRagService
 
     private readonly ChunkRetrievalService
         _retrievalService;
+    private readonly EmbeddingService _embeddingService;
 
     public BankingRagService(
-        ChunkRetrievalService retrievalService)
+        ChunkRetrievalService retrievalService,
+        EmbeddingService embeddingService)
     {
         _retrievalService =
             retrievalService;
+
+        _embeddingService =
+            embeddingService;
 
         var builder =
             Kernel.CreateBuilder();
@@ -67,6 +73,29 @@ No policy information available.
 """;
 
         // STEP 4 — Call LLM
+
+
+        var loanEmbedding =
+    await _embeddingService
+        .GenerateEmbedding(
+            "loan amount");
+
+        var borrowingEmbedding =
+            await _embeddingService
+                .GenerateEmbedding(
+                    "borrowing limit");
+
+        var similarity =
+            VectorHelper.CosineSimilarity(
+                loanEmbedding,
+                borrowingEmbedding);
+
+        return similarity.ToString();
+
+
+
+
+
 
         var result =
             await _kernel
