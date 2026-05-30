@@ -23,18 +23,44 @@ builder.Services
     .AddSingleton<PdfKnowledgeService>();
 
 builder.Services
-    .AddSingleton<BankingRagService>();
-builder.Services
     .AddSingleton<PdfChunkingService>();
 
 builder.Services
     .AddSingleton<ChunkRetrievalService>();
 
-builder.Services
-    .AddSingleton<BankingRagService>();
+
 builder.Services
     .AddSingleton<EmbeddingService>();
+
+builder.Services
+    .AddSingleton<VectorStoreService>();
+builder.Services.AddSingleton<SemanticRetrievalService>();
 var app = builder.Build();
+
+using (var scope =
+       app.Services.CreateScope())
+{
+    var pdfService =
+        scope.ServiceProvider
+            .GetRequiredService<
+                PdfKnowledgeService>();
+
+    var embeddingService =
+        scope.ServiceProvider
+            .GetRequiredService<
+                EmbeddingService>();
+
+    var vectorStore =
+        scope.ServiceProvider
+            .GetRequiredService<
+                VectorStoreService>();
+
+    await VectorInitializationService
+        .Initialize(
+            pdfService,
+            embeddingService,
+            vectorStore);
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

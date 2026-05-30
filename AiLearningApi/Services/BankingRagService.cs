@@ -8,12 +8,12 @@ public class BankingRagService
 {
     private readonly Kernel _kernel;
 
-    private readonly ChunkRetrievalService
+    private readonly SemanticRetrievalService
         _retrievalService;
     private readonly EmbeddingService _embeddingService;
 
     public BankingRagService(
-        ChunkRetrievalService retrievalService,
+        SemanticRetrievalService retrievalService,
         EmbeddingService embeddingService)
     {
         _retrievalService =
@@ -39,7 +39,7 @@ public class BankingRagService
         // STEP 1 — Retrieve chunk
 
         var chunk =
-            _retrievalService
+            await _retrievalService
                 .GetRelevantChunks(question);
 
         // STEP 2 — No retrieval result
@@ -73,30 +73,6 @@ No policy information available.
 """;
 
         // STEP 4 — Call LLM
-
-
-        var loanEmbedding =
-    await _embeddingService
-        .GenerateEmbedding(
-            "loan amount");
-
-        var borrowingEmbedding =
-            await _embeddingService
-                .GenerateEmbedding(
-                    "borrowing limit");
-
-        var similarity =
-            VectorHelper.CosineSimilarity(
-                loanEmbedding,
-                borrowingEmbedding);
-
-        return similarity.ToString();
-
-
-
-
-
-
         var result =
             await _kernel
                 .InvokePromptAsync(prompt);
