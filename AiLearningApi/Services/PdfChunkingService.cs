@@ -1,28 +1,20 @@
-﻿using AiLearningApi.Models;
-using UglyToad.PdfPig;
+﻿using UglyToad.PdfPig;
+using AiLearningApi.Models;
 
 namespace AiLearningApi.Services;
 
-public class PdfKnowledgeService
+public class PdfChunkingService
 {
-    private readonly List<DocumentChunk> _chunks;
-
-    public PdfKnowledgeService()
+    public List<DocumentChunk> LoadChunks()
     {
         var pdfText =
             ExtractTextFromPdf(
                 "Documents/banking-policy.pdf");
 
-        _chunks =
-            SplitIntoChunks(pdfText);
+        return SplitIntoChunks(pdfText);
     }
 
-    public List<DocumentChunk> GetChunks()
-    {
-        return _chunks;
-    }
-
-    public string ExtractTextFromPdf(
+    private string ExtractTextFromPdf(
         string path)
     {
         using var document =
@@ -39,7 +31,7 @@ public class PdfKnowledgeService
     }
 
     private List<DocumentChunk> SplitIntoChunks(
-       string text)
+        string text)
     {
         var chapters =
             text.Split(
@@ -53,12 +45,11 @@ public class PdfKnowledgeService
 
         foreach (var chapter in chapters)
         {
-            chunks.Add(
-                new DocumentChunk
-                {
-                    Id = id++,
-                    Content = "Chapter " + chapter.Trim()
-                });
+            chunks.Add(new DocumentChunk
+            {
+                Id = id++,
+                Content = "Chapter " + chapter
+            });
         }
 
         return chunks;

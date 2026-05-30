@@ -7,15 +7,17 @@ public class BankingRagService
 {
     private readonly Kernel _kernel;
 
-    private readonly PdfKnowledgeService
-        _knowledgeService;
+    private readonly ChunkRetrievalService
+        _retrievalService;
 
     public BankingRagService(
-        PdfKnowledgeService knowledgeService)
+        ChunkRetrievalService retrievalService)
     {
-        _knowledgeService = knowledgeService;
+        _retrievalService =
+            retrievalService;
 
-        var builder = Kernel.CreateBuilder();
+        var builder =
+            Kernel.CreateBuilder();
 
         builder.AddOllamaChatCompletion(
             modelId: "phi3",
@@ -28,31 +30,43 @@ public class BankingRagService
     public async Task<string> Ask(
         string question)
     {
-        // STEP 1 — Retrieve PDF content
+        // STEP 1 — Retrieve chunk
 
-        var policy =
-            _knowledgeService
-                .SearchRelevantPolicy(question);
+        var chunk =
+            _retrievalService
+                .GetRelevantChunks(question);
 
-        // STEP 2 — Build grounded prompt
+        // STEP 2 — No retrieval result
+
+        if (string.IsNullOrWhiteSpace(chunk))
+        {
+            return "No relevant information available.";
+        }
+
+        // STEP 3 — Build prompt
 
         var prompt = $"""
-        You are an enterprise banking AI assistant.
+You are an enterprise banking AI assistant.
 
-        Answer ONLY using the banking policy.
+Use ONLY the information
+provided in the banking policy.
 
-        If no policy exists,
-        say:
-        'No policy information available.'
+If multiple policies are relevant,
+combine them into a single answer.
 
-        Banking Policy:
-        {policy}
+Banking Policy:
+{chunk}
 
-        Customer Question:
-        {question}
-        """;
+Customer Question:
+{question}
 
-        // STEP 3 — Send to LLM
+If the answer is not present
+in the policy, respond with:
+
+No policy information available.
+""";
+
+        // STEP 4 — Call LLM
 
         var result =
             await _kernel

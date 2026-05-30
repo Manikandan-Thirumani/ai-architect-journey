@@ -24,6 +24,14 @@ builder.Services
 
 builder.Services
     .AddSingleton<BankingRagService>();
+builder.Services
+    .AddSingleton<PdfChunkingService>();
+
+builder.Services
+    .AddSingleton<ChunkRetrievalService>();
+
+builder.Services
+    .AddSingleton<BankingRagService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
