@@ -7,54 +7,125 @@ public class SemanticRetrievalService
 
     private readonly VectorStoreService
         _vectorStore;
+    private readonly RerankerService
+    _reranker;
 
     public SemanticRetrievalService(
         EmbeddingService embeddingService,
-        VectorStoreService vectorStore)
+        VectorStoreService vectorStore,
+        RerankerService reranker)
     {
         _embeddingService =
             embeddingService;
 
         _vectorStore =
             vectorStore;
+
+        _reranker =
+            reranker;
     }
 
-    public async Task<string> GetRelevantChunks(
-     string question)
+    public async Task<string>
+      GetRelevantChunks(
+          string question)
     {
         var questionVector =
             await _embeddingService
                 .GenerateEmbedding(question);
 
-        var results =
+        var vectorResults =
             _vectorStore.Search(
                 questionVector,
-                5);
+                20);
 
-        if (!results.Any())
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== VECTOR RESULTS =====");
+
+        foreach (var item in vectorResults)
         {
-            return "";
+            Console.WriteLine(
+                $"Vector Score = {item.Score:F4}");
+
+            Console.WriteLine(
+                item.Document.Content);
+
+            Console.WriteLine(
+                "---------------------");
         }
 
-        var bestScore =
-            results.Max(x => x.Score);
+        var chunks =
+            vectorResults
+                .Select(x =>
+                    x.Document.Content)
+                .ToList();
 
-        // Reject unrelated questions
-        if (bestScore < 0.50)
+        var reranked =
+            _reranker.Rerank(
+                question,
+                chunks);
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== RERANK RESULTS =====");
+
+        foreach (var item in reranked)
         {
-            return "";
+            Console.WriteLine(
+                $"Rerank Score = {item.Score}");
+
+            Console.WriteLine(
+                item.Content);
+
+            Console.WriteLine(
+                "---------------------");
         }
 
-        var relevantChunks =
-            results
-                .Where(x =>
-                    x.Score >= bestScore - 0.10)
-                .Select(x => x.Document.Content)
+        var topChunks =
+            reranked
+                .Take(3)
+                .Select(x => x.Content)
                 .Distinct()
                 .ToList();
 
+        if (!topChunks.Any())
+        {
+            return "";
+        }
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== FINAL CHUNKS =====");
+
+        foreach (var chunk in topChunks)
+        {
+            Console.WriteLine(chunk);
+
+            Console.WriteLine(
+                "---------------------");
+        }
+
         return string.Join(
             "\n\n-----------------\n\n",
-            relevantChunks);
+            topChunks);
+    }
+    private string GetQuestionCategory(
+    string question)
+    {
+        question = question.ToLower();
+
+        if (question.Contains("loan"))
+            return "Loan";
+
+        if (question.Contains("credit"))
+            return "CreditCard";
+
+        if (question.Contains("deposit"))
+            return "Deposit";
+
+        if (question.Contains("fraud"))
+            return "Fraud";
+
+        return "General";
     }
 }

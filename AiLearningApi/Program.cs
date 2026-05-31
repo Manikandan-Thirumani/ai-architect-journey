@@ -35,6 +35,10 @@ builder.Services
 builder.Services
     .AddSingleton<VectorStoreService>();
 builder.Services.AddSingleton<SemanticRetrievalService>();
+builder.Services
+    .AddSingleton<RerankerService>();
+builder.Services
+    .AddSingleton<CategoryService>();
 var app = builder.Build();
 
 using (var scope =
@@ -55,11 +59,16 @@ using (var scope =
             .GetRequiredService<
                 VectorStoreService>();
 
+    var categoryService =
+    scope.ServiceProvider
+        .GetRequiredService<
+            CategoryService>();
     await VectorInitializationService
-        .Initialize(
-            pdfService,
-            embeddingService,
-            vectorStore);
+    .Initialize(
+        pdfService,
+        embeddingService,
+        vectorStore,
+        categoryService);
 }
 
 // Configure the HTTP request pipeline.

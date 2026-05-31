@@ -14,8 +14,9 @@ public class VectorStoreService
         _documents.Add(document);
     }
 
-    public List<(VectorDocument Document,
-                 double Score)> Search(
+    public List<(
+        VectorDocument Document,
+        double Score)> Search(
         float[] queryVector,
         int topK)
     {
@@ -23,9 +24,10 @@ public class VectorStoreService
             .Select(doc => (
                 Document: doc,
                 Score:
-                    VectorHelper.CosineSimilarity(
-                        queryVector,
-                        doc.Embedding)))
+                    VectorHelper
+                        .CosineSimilarity(
+                            queryVector,
+                            doc.Embedding)))
             .OrderByDescending(x => x.Score)
             .Take(topK)
             .ToList();

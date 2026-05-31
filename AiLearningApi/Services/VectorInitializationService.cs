@@ -7,7 +7,8 @@ public class VectorInitializationService
     public static async Task Initialize(
         PdfKnowledgeService pdfService,
         EmbeddingService embeddingService,
-        VectorStoreService vectorStore)
+        VectorStoreService vectorStore,
+        CategoryService categoryService)
     {
         var chunks =
             pdfService.GetChunks();
@@ -22,12 +23,21 @@ public class VectorInitializationService
                     .GenerateEmbedding(
                         chunk.Content);
 
+            var category =
+                await categoryService
+                    .DetectCategory(
+                        chunk.Content);
+
+            Console.WriteLine(
+                $"Chunk {chunk.Id} Category = {category}");
+
             vectorStore.Add(
                 new VectorDocument
                 {
                     Id = chunk.Id,
                     Content = chunk.Content,
-                    Embedding = embedding
+                    Embedding = embedding,
+                    Category = category
                 });
         }
 

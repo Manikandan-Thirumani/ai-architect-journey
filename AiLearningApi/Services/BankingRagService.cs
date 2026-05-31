@@ -39,8 +39,8 @@ public class BankingRagService
         // STEP 1 — Retrieve chunk
 
         var chunk =
-            await _retrievalService
-                .GetRelevantChunks(question);
+    await _retrievalService
+        .GetRelevantChunks(question);
 
         // STEP 2 — No retrieval result
 
