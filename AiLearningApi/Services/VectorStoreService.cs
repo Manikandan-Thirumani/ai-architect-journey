@@ -14,24 +14,20 @@ public class VectorStoreService
         _documents.Add(document);
     }
 
-    public List<VectorDocument> Search(
-        float[] queryEmbedding,
-        int top = 3)
+    public List<(VectorDocument Document,
+                 double Score)> Search(
+        float[] queryVector,
+        int topK)
     {
         return _documents
-            .Select(x => new
-            {
-                Document = x,
-
-                Score =
-                    VectorHelper
-                        .CosineSimilarity(
-                            queryEmbedding,
-                            x.Embedding)
-            })
+            .Select(doc => (
+                Document: doc,
+                Score:
+                    VectorHelper.CosineSimilarity(
+                        queryVector,
+                        doc.Embedding)))
             .OrderByDescending(x => x.Score)
-            .Take(top)
-            .Select(x => x.Document)
+            .Take(topK)
             .ToList();
     }
 }
