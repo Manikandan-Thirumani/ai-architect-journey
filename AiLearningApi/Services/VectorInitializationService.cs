@@ -8,6 +8,7 @@ public class VectorInitializationService
         PdfKnowledgeService pdfService,
         EmbeddingService embeddingService,
         VectorStoreService vectorStore,
+        PolicyExtractorService policyExtractor,
         CategoryService categoryService)
     {
         var chunks =
@@ -23,21 +24,30 @@ public class VectorInitializationService
                     .GenerateEmbedding(
                         chunk.Content);
 
-            var category =
-                await categoryService
-                    .DetectCategory(
+            var policyName =
+                policyExtractor
+                    .ExtractPolicyName(
                         chunk.Content);
 
+            var category =
+                categoryService
+                    .GetCategory(
+                        policyName);
+
             Console.WriteLine(
-                $"Chunk {chunk.Id} Category = {category}");
+                $"Policy = {policyName}");
+
+            Console.WriteLine(
+                $"Category = {category}");
 
             vectorStore.Add(
                 new VectorDocument
                 {
-                    Id = chunk.Id,
+                    Id = chunk.Id.ToString(),
                     Content = chunk.Content,
                     Embedding = embedding,
-                    Category = category
+                    Category = category,
+                    PolicyName = policyName
                 });
         }
 

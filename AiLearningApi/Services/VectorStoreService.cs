@@ -15,19 +15,38 @@ public class VectorStoreService
     }
 
     public List<(
-        VectorDocument Document,
-        double Score)> Search(
-        float[] queryVector,
-        int topK)
+    VectorDocument Document,
+    double Score)> Search(
+    float[] queryVector,
+    int topK)
     {
         return _documents
             .Select(doc => (
                 Document: doc,
                 Score:
-                    VectorHelper
-                        .CosineSimilarity(
-                            queryVector,
-                            doc.Embedding)))
+                    VectorHelper.CosineSimilarity(
+                        queryVector,
+                        doc.Embedding)))
+            .OrderByDescending(x => x.Score)
+            .Take(topK)
+            .ToList();
+    }
+    public List<(
+    VectorDocument Document,
+    double Score)> Search(
+        float[] queryVector,
+        string category,
+        int topK)
+    {
+        return _documents
+            .Where(x =>
+                x.Category == category)
+            .Select(doc => (
+                Document: doc,
+                Score:
+                    VectorHelper.CosineSimilarity(
+                        queryVector,
+                        doc.Embedding)))
             .OrderByDescending(x => x.Score)
             .Take(topK)
             .ToList();

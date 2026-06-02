@@ -7,6 +7,7 @@ namespace AiLearningApi.Services;
 public class BankingRagService
 {
     private readonly Kernel _kernel;
+    private readonly QueryUnderstandingService _queryUnderstandingService;
 
     private readonly SemanticRetrievalService
         _retrievalService;
@@ -14,13 +15,17 @@ public class BankingRagService
 
     public BankingRagService(
         SemanticRetrievalService retrievalService,
-        EmbeddingService embeddingService)
+        EmbeddingService embeddingService,
+        QueryUnderstandingService queryUnderstandingService)
     {
         _retrievalService =
             retrievalService;
 
         _embeddingService =
             embeddingService;
+
+        _queryUnderstandingService =
+            queryUnderstandingService;
 
         var builder =
             Kernel.CreateBuilder();
@@ -36,6 +41,16 @@ public class BankingRagService
     public async Task<string> Ask(
         string question)
     {
+
+        var intent =
+    _queryUnderstandingService
+        .Analyze(question);
+
+        Console.WriteLine(
+            $"Category = {intent.Category}");
+
+        Console.WriteLine(
+            $"Intent = {intent.Intent}");
         // STEP 1 — Retrieve chunk
 
         var chunk =

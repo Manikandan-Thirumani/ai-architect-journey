@@ -6,62 +6,77 @@ public class RerankerService
 {
     private static readonly HashSet<string>
         StopWords =
-    [
-        "what",
-        "is",
-        "the",
-        "a",
-        "an",
-        "of",
-        "to",
-        "for",
-        "in",
-        "and"
-    ];
+        [
+            "what",
+            "is",
+            "the",
+            "a",
+            "an",
+            "of",
+            "to",
+            "for",
+            "in",
+            "and",
+            "max",
+            "maximum"
+        ];
 
     public List<RerankResult> Rerank(
         string question,
-        List<string> chunks)
+        List<(VectorDocument Document,
+              double Score)> results)
     {
-        var questionWords =
+        var words =
             question
                 .ToLower()
                 .Split(
-                    ' ',
+                    [' ', '?', '.', ','],
                     StringSplitOptions
                         .RemoveEmptyEntries)
                 .Where(x =>
                     !StopWords.Contains(x))
+                .Distinct()
                 .ToList();
 
-        var results =
+        var reranked =
             new List<RerankResult>();
 
-        foreach (var chunk in chunks)
+        foreach (var result in results)
         {
             int score = 0;
 
-            var chunkText =
-                chunk.ToLower();
+            var content =
+                result.Document
+                    .Content
+                    .ToLower();
 
-            foreach (var word in questionWords)
+            foreach (var word in words)
             {
-                if (chunkText.Contains(word))
+                if (content.Contains(word))
                 {
-                    score++;
+                    score += word.Length;
                 }
             }
 
-            results.Add(
+            reranked.Add(
                 new RerankResult
                 {
-                    Content = chunk,
-                    Score = score
+                    Document =
+                        result.Document,
+
+                    VectorScore =
+                        result.Score,
+
+                    RerankScore =
+                        score
                 });
         }
 
-        return results
-            .OrderByDescending(x => x.Score)
+        return reranked
+            .OrderByDescending(
+                x => x.RerankScore)
+            .ThenByDescending(
+                x => x.VectorScore)
             .ToList();
     }
 }

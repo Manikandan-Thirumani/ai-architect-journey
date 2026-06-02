@@ -1,4 +1,6 @@
-﻿namespace AiLearningApi.Services;
+﻿using AiLearningApi.Models;
+
+namespace AiLearningApi.Services;
 
 public class SemanticRetrievalService
 {
@@ -7,13 +9,18 @@ public class SemanticRetrievalService
 
     private readonly VectorStoreService
         _vectorStore;
+
     private readonly RerankerService
-    _reranker;
+        _reranker;
+
+    private readonly LlmQueryUnderstandingService
+        _queryUnderstanding;
 
     public SemanticRetrievalService(
         EmbeddingService embeddingService,
         VectorStoreService vectorStore,
-        RerankerService reranker)
+        RerankerService reranker,
+        LlmQueryUnderstandingService queryUnderstanding)
     {
         _embeddingService =
             embeddingService;
@@ -23,19 +30,36 @@ public class SemanticRetrievalService
 
         _reranker =
             reranker;
+
+        _queryUnderstanding =
+            queryUnderstanding;
     }
 
     public async Task<string>
-      GetRelevantChunks(
-          string question)
+        GetRelevantChunks(
+            string question)
     {
+        var queryIntent =
+            await _queryUnderstanding
+                .Analyze(question);
+
+        Console.WriteLine();
+
+        Console.WriteLine(
+            $"Category = {queryIntent.Category}");
+
+        Console.WriteLine(
+            $"Intent = {queryIntent.Intent}");
+
         var questionVector =
             await _embeddingService
-                .GenerateEmbedding(question);
+                .GenerateEmbedding(
+                    question);
 
         var vectorResults =
             _vectorStore.Search(
                 questionVector,
+                queryIntent.Category,
                 20);
 
         Console.WriteLine();
@@ -54,16 +78,10 @@ public class SemanticRetrievalService
                 "---------------------");
         }
 
-        var chunks =
-            vectorResults
-                .Select(x =>
-                    x.Document.Content)
-                .ToList();
-
         var reranked =
             _reranker.Rerank(
                 question,
-                chunks);
+                vectorResults);
 
         Console.WriteLine();
         Console.WriteLine(
@@ -72,10 +90,10 @@ public class SemanticRetrievalService
         foreach (var item in reranked)
         {
             Console.WriteLine(
-                $"Rerank Score = {item.Score}");
+                $"Rerank Score = {item.RerankScore}");
 
             Console.WriteLine(
-                item.Content);
+                item.Document.Content);
 
             Console.WriteLine(
                 "---------------------");
@@ -83,8 +101,11 @@ public class SemanticRetrievalService
 
         var topChunks =
             reranked
+                .Where(x =>
+                    x.RerankScore > 0)
                 .Take(3)
-                .Select(x => x.Content)
+                .Select(x =>
+                    x.Document.Content)
                 .Distinct()
                 .ToList();
 
@@ -108,24 +129,5 @@ public class SemanticRetrievalService
         return string.Join(
             "\n\n-----------------\n\n",
             topChunks);
-    }
-    private string GetQuestionCategory(
-    string question)
-    {
-        question = question.ToLower();
-
-        if (question.Contains("loan"))
-            return "Loan";
-
-        if (question.Contains("credit"))
-            return "CreditCard";
-
-        if (question.Contains("deposit"))
-            return "Deposit";
-
-        if (question.Contains("fraud"))
-            return "Fraud";
-
-        return "General";
     }
 }

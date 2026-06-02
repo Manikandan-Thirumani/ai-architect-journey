@@ -39,6 +39,13 @@ builder.Services
     .AddSingleton<RerankerService>();
 builder.Services
     .AddSingleton<CategoryService>();
+builder.Services
+    .AddSingleton<PolicyExtractorService>();
+builder.Services
+    .AddSingleton<QueryUnderstandingService>();
+builder.Services
+    .AddSingleton<
+        LlmQueryUnderstandingService>();
 var app = builder.Build();
 
 using (var scope =
@@ -59,16 +66,23 @@ using (var scope =
             .GetRequiredService<
                 VectorStoreService>();
 
+    var policyExtractor =
+        scope.ServiceProvider
+            .GetRequiredService<
+                PolicyExtractorService>();
+
     var categoryService =
-    scope.ServiceProvider
-        .GetRequiredService<
-            CategoryService>();
+        scope.ServiceProvider
+            .GetRequiredService<
+                CategoryService>();
+
     await VectorInitializationService
-    .Initialize(
-        pdfService,
-        embeddingService,
-        vectorStore,
-        categoryService);
+        .Initialize(
+            pdfService,
+            embeddingService,
+            vectorStore,
+            policyExtractor,
+            categoryService);
 }
 
 // Configure the HTTP request pipeline.

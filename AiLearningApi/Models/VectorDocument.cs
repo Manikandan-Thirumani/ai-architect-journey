@@ -2,15 +2,13 @@
 
 public class VectorDocument
 {
-    public int Id { get; set; }
-       
+    public string Id { get; set; } = "";
 
-    public string Content { get; set; }
-        = string.Empty;
+    public string Content { get; set; } = "";
 
-    public string Category { get; set; }
-        = string.Empty;
+    public float[] Embedding { get; set; } = [];
 
-    public float[] Embedding { get; set; }
-        = [];
+    public string Category { get; set; } = "";
+
+    public string PolicyName { get; set; } = "";
 }

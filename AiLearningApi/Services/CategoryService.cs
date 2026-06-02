@@ -1,52 +1,28 @@
-﻿using Microsoft.SemanticKernel;
-
-namespace AiLearningApi.Services;
+﻿namespace AiLearningApi.Services;
 
 public class CategoryService
 {
-    private readonly Kernel _kernel;
-
-    public CategoryService()
+    public string GetCategory(
+        string policyName)
     {
-        var builder =
-            Kernel.CreateBuilder();
+        policyName =
+            policyName.ToLower();
 
-        builder.AddOllamaChatCompletion(
-            modelId: "phi3",
-            endpoint:
-                new Uri("http://localhost:11434"));
+        if (policyName.Contains("loan"))
+            return "Loan";
 
-        _kernel = builder.Build();
-    }
+        if (policyName.Contains("credit"))
+            return "CreditCard";
 
-    public async Task<string> DetectCategory(
-        string question)
-    {
-        var prompt = $"""
-You are a banking classifier.
+        if (policyName.Contains("deposit"))
+            return "Deposit";
 
-Available categories:
+        if (policyName.Contains("fraud"))
+            return "Fraud";
 
-Loan
-HomeLoan
-CreditCard
-Deposit
-Fraud
-DigitalBanking
-General
+        if (policyName.Contains("digital"))
+            return "DigitalBanking";
 
-Question:
-{question}
-
-Return ONLY category name.
-""";
-
-        var result =
-            await _kernel
-                .InvokePromptAsync(prompt);
-
-        return result
-            .ToString()
-            .Trim();
+        return "General";
     }
 }

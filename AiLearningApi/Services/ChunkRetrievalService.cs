@@ -6,18 +6,19 @@ public class ChunkRetrievalService
 {
     private readonly List<DocumentChunk> _chunks;
 
-    private static readonly HashSet<string> StopWords =
+    private static readonly HashSet<string>
+    StopWords =
     [
         "what",
-        "is",
-        "the",
-        "and",
-        "for",
-        "a",
-        "an",
-        "of",
-        "to",
-        "in"
+    "is",
+    "the",
+    "a",
+    "an",
+    "of",
+    "to",
+    "for",
+    "in",
+    "and"
     ];
 
     public ChunkRetrievalService(

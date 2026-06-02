@@ -19,6 +19,7 @@ public class BankingController : ControllerBase
     public async Task<IActionResult> Ask(
         string question)
     {
+
         var response =
             await _ragService.Ask(question);
 
