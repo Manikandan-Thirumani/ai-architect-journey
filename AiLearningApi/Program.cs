@@ -46,6 +46,15 @@ builder.Services
 builder.Services
     .AddSingleton<
         LlmQueryUnderstandingService>();
+builder.Services
+    .AddSingleton<
+        LlmRerankerService>();
+builder.Services.AddSingleton<
+    IntentChunkFilterService>();
+builder.Services
+    .AddSingleton<
+        ConfidenceScoringService>();
+
 var app = builder.Build();
 
 using (var scope =

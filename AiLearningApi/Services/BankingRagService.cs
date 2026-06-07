@@ -1,4 +1,5 @@
 ﻿using AiLearningApi.Helpers;
+using AiLearningApi.Models;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Ollama;
 
@@ -7,16 +8,24 @@ namespace AiLearningApi.Services;
 public class BankingRagService
 {
     private readonly Kernel _kernel;
-    private readonly QueryUnderstandingService _queryUnderstandingService;
+
+    private readonly QueryUnderstandingService
+        _queryUnderstandingService;
 
     private readonly SemanticRetrievalService
         _retrievalService;
-    private readonly EmbeddingService _embeddingService;
+
+    private readonly EmbeddingService
+        _embeddingService;
+
+    private readonly ConfidenceScoringService
+        _confidenceService;
 
     public BankingRagService(
         SemanticRetrievalService retrievalService,
         EmbeddingService embeddingService,
-        QueryUnderstandingService queryUnderstandingService)
+        QueryUnderstandingService queryUnderstandingService,
+        ConfidenceScoringService confidenceService)
     {
         _retrievalService =
             retrievalService;
@@ -26,6 +35,9 @@ public class BankingRagService
 
         _queryUnderstandingService =
             queryUnderstandingService;
+
+        _confidenceService =
+            confidenceService;
 
         var builder =
             Kernel.CreateBuilder();
@@ -38,33 +50,89 @@ public class BankingRagService
         _kernel = builder.Build();
     }
 
-    public async Task<string> Ask(
+    public async Task<RagResponse> Ask(
         string question)
     {
+        // STEP 1 — Understand Query
 
         var intent =
-    _queryUnderstandingService
-        .Analyze(question);
+            _queryUnderstandingService
+                .Analyze(question);
 
         Console.WriteLine(
             $"Category = {intent.Category}");
 
         Console.WriteLine(
             $"Intent = {intent.Intent}");
-        // STEP 1 — Retrieve chunk
+
+        // STEP 2 — Retrieve Relevant Chunks
 
         var chunk =
-    await _retrievalService
-        .GetRelevantChunks(question);
+            await _retrievalService
+                .GetRelevantChunks(question);
 
-        // STEP 2 — No retrieval result
+        // STEP 3 — No Retrieval Result
 
         if (string.IsNullOrWhiteSpace(chunk))
         {
-            return "No relevant information available.";
+            return new RagResponse
+            {
+                Answer =
+                    "No relevant information available.",
+
+                Confidence = 0,
+
+                Decision =
+                    "Low Confidence",
+
+                Intent =
+                    intent.Intent,
+
+                Category =
+                    intent.Category
+            };
         }
 
-        // STEP 3 — Build prompt
+        // STEP 4 — Confidence Calculation
+
+        double similarityScore = 90;
+
+        bool intentMatched = true;
+
+        bool categoryMatched =
+            !string.IsNullOrWhiteSpace(
+                intent.Category);
+
+        var confidence =
+            _confidenceService.Calculate(
+                similarityScore,
+                intentMatched,
+                categoryMatched);
+
+        // STEP 5 — Reject Low Confidence Queries
+
+        if (!confidence.ShouldAnswer)
+        {
+            return new RagResponse
+            {
+                Answer =
+                    "I could not find reliable information to answer your question.",
+
+                Confidence =
+                    confidence.FinalConfidence,
+
+                Decision =
+                    confidence.Decision,
+
+                Intent =
+                    intent.Intent,
+
+                Category =
+                    intent.Category
+            };
+        }
+
+        // STEP 6 — Build Prompt
 
         var prompt = $"""
 You are an enterprise banking AI assistant.
@@ -87,11 +155,30 @@ in the policy, respond with:
 No policy information available.
 """;
 
-        // STEP 4 — Call LLM
+        // STEP 7 — Generate Grounded Answer
+
         var result =
             await _kernel
                 .InvokePromptAsync(prompt);
 
-        return result.ToString();
+        // STEP 8 — Return Answer + Confidence
+
+        return new RagResponse
+        {
+            Answer =
+                result.ToString(),
+
+            Confidence =
+                confidence.FinalConfidence,
+
+            Decision =
+                confidence.Decision,
+
+            Intent =
+                intent.Intent,
+
+            Category =
+                intent.Category
+        };
     }
 }

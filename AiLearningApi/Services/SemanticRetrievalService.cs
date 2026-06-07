@@ -10,17 +10,17 @@ public class SemanticRetrievalService
     private readonly VectorStoreService
         _vectorStore;
 
-    private readonly RerankerService
-        _reranker;
-
     private readonly LlmQueryUnderstandingService
         _queryUnderstanding;
+
+    private readonly IntentChunkFilterService
+        _intentChunkFilter;
 
     public SemanticRetrievalService(
         EmbeddingService embeddingService,
         VectorStoreService vectorStore,
-        RerankerService reranker,
-        LlmQueryUnderstandingService queryUnderstanding)
+        LlmQueryUnderstandingService queryUnderstanding,
+        IntentChunkFilterService intentChunkFilter)
     {
         _embeddingService =
             embeddingService;
@@ -28,11 +28,11 @@ public class SemanticRetrievalService
         _vectorStore =
             vectorStore;
 
-        _reranker =
-            reranker;
-
         _queryUnderstanding =
             queryUnderstanding;
+
+        _intentChunkFilter =
+            intentChunkFilter;
     }
 
     public async Task<string>
@@ -62,6 +62,11 @@ public class SemanticRetrievalService
                 queryIntent.Category,
                 20);
 
+        vectorResults =
+            _intentChunkFilter.Filter(
+                queryIntent.Intent,
+                vectorResults);
+
         Console.WriteLine();
         Console.WriteLine(
             "===== VECTOR RESULTS =====");
@@ -78,31 +83,10 @@ public class SemanticRetrievalService
                 "---------------------");
         }
 
-        var reranked =
-            _reranker.Rerank(
-                question,
-                vectorResults);
-
-        Console.WriteLine();
-        Console.WriteLine(
-            "===== RERANK RESULTS =====");
-
-        foreach (var item in reranked)
-        {
-            Console.WriteLine(
-                $"Rerank Score = {item.RerankScore}");
-
-            Console.WriteLine(
-                item.Document.Content);
-
-            Console.WriteLine(
-                "---------------------");
-        }
-
         var topChunks =
-            reranked
-                .Where(x =>
-                    x.RerankScore > 0)
+            vectorResults
+                .OrderByDescending(
+                    x => x.Score)
                 .Take(3)
                 .Select(x =>
                     x.Document.Content)
