@@ -15,12 +15,15 @@ public class SemanticRetrievalService
 
     private readonly IntentChunkFilterService
         _intentChunkFilter;
+    private readonly
+    LlmRerankerService
+    _reranker;
 
     public SemanticRetrievalService(
         EmbeddingService embeddingService,
         VectorStoreService vectorStore,
         LlmQueryUnderstandingService queryUnderstanding,
-        IntentChunkFilterService intentChunkFilter)
+        IntentChunkFilterService intentChunkFilter, LlmRerankerService reranker)
     {
         _embeddingService =
             embeddingService;
@@ -33,6 +36,7 @@ public class SemanticRetrievalService
 
         _intentChunkFilter =
             intentChunkFilter;
+        _reranker = reranker;
     }
 
     public async Task<string>
@@ -83,14 +87,25 @@ public class SemanticRetrievalService
                 "---------------------");
         }
 
-        var topChunks =
+        var candidateChunks =
             vectorResults
                 .OrderByDescending(
                     x => x.Score)
-                .Take(3)
+                .Take(5)
                 .Select(x =>
                     x.Document.Content)
                 .Distinct()
+                .ToList();
+
+        var topChunks =
+            await _reranker
+                .Rerank(
+                    question,
+                    candidateChunks);
+
+        topChunks =
+            topChunks
+                .Take(3)
                 .ToList();
 
         if (!topChunks.Any())

@@ -1,100 +1,67 @@
-﻿using System.Text.Json;
-using AiLearningApi.Models;
+﻿using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.Ollama;
 
 namespace AiLearningApi.Services;
 
 public class LlmRerankerService
 {
-    private readonly OllamaService
-        _ollamaService;
+    private readonly Kernel _kernel;
 
-    public LlmRerankerService(
-        OllamaService ollamaService)
+    public LlmRerankerService()
     {
-        _ollamaService =
-            ollamaService;
+        var builder =
+            Kernel.CreateBuilder();
+
+        builder.AddOllamaChatCompletion(
+            modelId: "phi3",
+            endpoint:
+                new Uri("http://localhost:11434"));
+
+        _kernel = builder.Build();
     }
 
-    public async Task<List<RerankChunkResult>>
+    public async Task<List<string>>
         Rerank(
             string question,
-            List<VectorDocument> chunks)
+            List<string> chunks)
     {
-        var chunkText =
-            string.Join(
-                "\n\n",
-                chunks.Select(
-                    x =>
-$"""
-ChunkId:{x.Id}
+        var scored =
+            new List<(string Chunk, int Score)>();
 
-{x.Content}
-"""));
-
-        var prompt =
-        $@"You are a document reranker.
-
+        foreach (var chunk in chunks)
+        {
+            var prompt = $"""
 Question:
 {question}
 
-Rank chunks from most relevant to least relevant.
+Chunk:
+{chunk}
 
-Return JSON ONLY.
+Rate relevance from 1 to 100.
 
-Example:
+Return ONLY the number.
+""";
 
-[
-  {{
-      ""ChunkId"":""1"",
-      ""Score"":100
-  }},
-  {{
-      ""ChunkId"":""2"",
-      ""Score"":50
-  }}
-]
+            var result =
+                await _kernel
+                    .InvokePromptAsync(prompt);
 
-Chunks:
-
-{chunkText}";
-
-        var response =
-            await _ollamaService
-                .AskAi(prompt);
-
-        try
-        {
-            var start =
-                response.IndexOf('[');
-
-            var end =
-                response.LastIndexOf(']');
-
-            if (start >= 0 &&
-                end > start)
+            if (!int.TryParse(
+                    result.ToString(),
+                    out var score))
             {
-                response =
-                    response.Substring(
-                        start,
-                        end - start + 1);
+                score = 50;
             }
 
-            var options =
-                new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
+            scored.Add(
+                (chunk, score));
+        }
 
-            return JsonSerializer
-                .Deserialize<
-                    List<RerankChunkResult>>(
-                        response,
-                        options)
-                   ?? [];
-        }
-        catch
-        {
-            return [];
-        }
+        return scored
+            .OrderByDescending(
+                x => x.Score)
+            .Select(
+                x => x.Chunk)
+            .ToList();
     }
 }
