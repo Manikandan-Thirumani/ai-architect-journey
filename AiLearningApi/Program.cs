@@ -54,6 +54,9 @@ builder.Services.AddSingleton<
 builder.Services
     .AddSingleton<
         ConfidenceScoringService>();
+builder.Services
+    .AddSingleton<
+        CitationService>();
 
 var app = builder.Build();
 

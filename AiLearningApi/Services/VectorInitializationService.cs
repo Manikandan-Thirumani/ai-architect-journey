@@ -11,47 +11,55 @@ public class VectorInitializationService
         PolicyExtractorService policyExtractor,
         CategoryService categoryService)
     {
-        var chunks =
-            pdfService.GetChunks();
+        var files =
+            Directory.GetFiles(
+                "KnowledgeBase",
+                "*.txt");
 
-        foreach (var chunk in chunks)
+        foreach (var file in files)
         {
             Console.WriteLine(
-                $"Embedding Chunk {chunk.Id}");
+                $"Processing {file}");
+
+            var content =
+                await File.ReadAllTextAsync(
+                    file);
+
+            // One file = one chunk for now
 
             var embedding =
                 await embeddingService
                     .GenerateEmbedding(
-                        chunk.Content);
-
-            var policyName =
-                policyExtractor
-                    .ExtractPolicyName(
-                        chunk.Content);
+                        content);
 
             var category =
                 categoryService
                     .GetCategory(
-                        policyName);
+                        content);
 
-            Console.WriteLine(
-                $"Policy = {policyName}");
-
-            Console.WriteLine(
-                $"Category = {category}");
+            var policyName =
+                policyExtractor
+                    .ExtractPolicyName(
+                        content);
 
             vectorStore.Add(
                 new VectorDocument
                 {
-                    Id = chunk.Id.ToString(),
-                    Content = chunk.Content,
+                    Id = Guid.NewGuid()
+                        .ToString(),
+
+                    Content = content,
+
                     Embedding = embedding,
+
                     Category = category,
-                    PolicyName = policyName
+
+                    PolicyName = policyName,
+
+                    SourceDocument =
+                        Path.GetFileName(
+                            file)
                 });
         }
-
-        Console.WriteLine(
-            "Vector store initialized");
     }
 }

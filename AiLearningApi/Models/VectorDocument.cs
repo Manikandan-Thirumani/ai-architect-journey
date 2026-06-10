@@ -11,4 +11,9 @@ public class VectorDocument
     public string Category { get; set; } = "";
 
     public string PolicyName { get; set; } = "";
+    public string SourceDocument
+    {
+        get;
+        set;
+    } = string.Empty;
 }

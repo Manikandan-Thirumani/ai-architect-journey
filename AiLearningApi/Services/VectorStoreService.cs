@@ -51,4 +51,58 @@ public class VectorStoreService
             .Take(topK)
             .ToList();
     }
+    public List<string>
+    GetMatchedDocuments(
+        float[] queryVector,
+        string category)
+    {
+        return _documents
+            .Where(x =>
+                x.Category ==
+                category)
+            .OrderByDescending(
+                x =>
+                    VectorHelper
+                        .CosineSimilarity(
+                            queryVector,
+                            x.Embedding))
+            .Take(10)
+            .Select(x =>
+                x.SourceDocument)
+            .Distinct()
+            .ToList();
+    }
+    public List<RetrievedChunk>
+    SearchWithSources(
+        float[] queryVector,
+        string category,
+        int topK)
+    {
+        return _documents
+            .Where(x =>
+                x.Category ==
+                category)
+            .Select(doc =>
+                new RetrievedChunk
+                {
+                    Content =
+                        doc.Content,
+
+                    SourceDocument =
+                        doc.SourceDocument,
+
+                    PolicyName =
+                        doc.PolicyName,
+
+                    Score =
+                        VectorHelper
+                            .CosineSimilarity(
+                                queryVector,
+                                doc.Embedding)
+                })
+            .OrderByDescending(
+                x => x.Score)
+            .Take(topK)
+            .ToList();
+    }
 }

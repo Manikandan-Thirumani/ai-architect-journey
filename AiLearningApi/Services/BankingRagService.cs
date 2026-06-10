@@ -20,12 +20,14 @@ public class BankingRagService
 
     private readonly ConfidenceScoringService
         _confidenceService;
+    private readonly CitationService
+    _citationService;
 
     public BankingRagService(
         SemanticRetrievalService retrievalService,
         EmbeddingService embeddingService,
         QueryUnderstandingService queryUnderstandingService,
-        ConfidenceScoringService confidenceService)
+        ConfidenceScoringService confidenceService, CitationService citationService)
     {
         _retrievalService =
             retrievalService;
@@ -38,6 +40,8 @@ public class BankingRagService
 
         _confidenceService =
             confidenceService;
+        _citationService =
+    citationService;
 
         var builder =
             Kernel.CreateBuilder();
@@ -161,7 +165,22 @@ No policy information available.
             await _kernel
                 .InvokePromptAsync(prompt);
 
-        // STEP 8 — Return Answer + Confidence
+
+
+        var citations =
+            new List<SourceCitation>
+            {
+        new SourceCitation
+        {
+            DocumentName =
+                "LoanPolicy.txt",
+
+            PolicyName =
+                "Premium Loan Policy"
+        }
+            };
+
+
 
         return new RagResponse
         {
@@ -178,7 +197,10 @@ No policy information available.
                 intent.Intent,
 
             Category =
-                intent.Category
+                intent.Category,
+
+            Sources =
+                citations
         };
     }
 }

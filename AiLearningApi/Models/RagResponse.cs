@@ -15,4 +15,8 @@ public class RagResponse
 
     public string Category { get; set; }
         = string.Empty;
+    public List<SourceCitation>
+    Sources
+    { get; set; }
+    = [];
 }
