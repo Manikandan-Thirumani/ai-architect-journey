@@ -66,6 +66,25 @@ public class SemanticRetrievalService
                 queryIntent.Category,
                 20);
 
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== SEARCH RESULTS =====");
+
+        foreach (var item in vectorResults)
+        {
+            Console.WriteLine(
+                $"Score = {item.Score:F4}");
+
+            Console.WriteLine(
+                $"Category = {item.Document.Category}");
+
+            Console.WriteLine(
+                item.Document.Content);
+
+            Console.WriteLine(
+                "----------------------");
+        }
+
         vectorResults =
             _intentChunkFilter.Filter(
                 queryIntent.Intent,
@@ -87,25 +106,14 @@ public class SemanticRetrievalService
                 "---------------------");
         }
 
-        var candidateChunks =
+        var topChunks =
             vectorResults
                 .OrderByDescending(
                     x => x.Score)
-                .Take(5)
+                .Take(3)
                 .Select(x =>
                     x.Document.Content)
                 .Distinct()
-                .ToList();
-
-        var topChunks =
-            await _reranker
-                .Rerank(
-                    question,
-                    candidateChunks);
-
-        topChunks =
-            topChunks
-                .Take(3)
                 .ToList();
 
         if (!topChunks.Any())

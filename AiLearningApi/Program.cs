@@ -57,6 +57,14 @@ builder.Services
 builder.Services
     .AddSingleton<
         CitationService>();
+builder.Services
+    .AddSingleton<
+        HallucinationDetectionService>();
+builder.Services
+    .AddSingleton<QueryRewriteService>();
+builder.Services
+    .AddSingleton<
+        ConversationMemoryService>();
 
 var app = builder.Build();
 

@@ -20,14 +20,27 @@ public class BankingRagService
 
     private readonly ConfidenceScoringService
         _confidenceService;
+
     private readonly CitationService
-    _citationService;
+        _citationService;
+
+    private readonly HallucinationDetectionService
+        _hallucinationService;
+    private readonly QueryRewriteService
+    _queryRewriteService;
+    private readonly
+    ConversationMemoryService
+    _memoryService;
 
     public BankingRagService(
         SemanticRetrievalService retrievalService,
         EmbeddingService embeddingService,
         QueryUnderstandingService queryUnderstandingService,
-        ConfidenceScoringService confidenceService, CitationService citationService)
+        ConfidenceScoringService confidenceService,
+        CitationService citationService,
+        HallucinationDetectionService hallucinationService,
+        QueryRewriteService queryRewriteService, ConversationMemoryService
+    memoryService)
     {
         _retrievalService =
             retrievalService;
@@ -40,8 +53,17 @@ public class BankingRagService
 
         _confidenceService =
             confidenceService;
+
         _citationService =
-    citationService;
+            citationService;
+
+        _hallucinationService =
+            hallucinationService;
+
+        _queryRewriteService =
+            queryRewriteService;
+        _memoryService =
+    memoryService;
 
         var builder =
             Kernel.CreateBuilder();
@@ -57,11 +79,48 @@ public class BankingRagService
     public async Task<RagResponse> Ask(
         string question)
     {
-        // STEP 1 — Understand Query
+        // MEMORY
+
+        _memoryService.AddMessage(
+            $"User: {question}");
+
+        var conversationContext =
+            _memoryService
+                .GetContext();
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== MEMORY =====");
+
+        Console.WriteLine(
+            conversationContext);
+
+        string rewrittenQuestion =
+            question;
+
+        if (ConversationMemoryHelper
+                .NeedsRewrite(question))
+        {
+            rewrittenQuestion =
+                await _queryRewriteService
+                    .Rewrite(
+                        conversationContext,
+                        question);
+        }
+
+
+        Console.WriteLine();
+        Console.WriteLine(
+            $"Original Question: {question}");
+
+        Console.WriteLine(
+            $"Rewritten Question: {rewrittenQuestion}");
+
+        // INTENT
 
         var intent =
             _queryUnderstandingService
-                .Analyze(question);
+                .Analyze(rewrittenQuestion);
 
         Console.WriteLine(
             $"Category = {intent.Category}");
@@ -69,13 +128,21 @@ public class BankingRagService
         Console.WriteLine(
             $"Intent = {intent.Intent}");
 
-        // STEP 2 — Retrieve Relevant Chunks
+        // RETRIEVAL
 
         var chunk =
             await _retrievalService
-                .GetRelevantChunks(question);
+                .GetRelevantChunks(
+                    rewrittenQuestion);
 
-        // STEP 3 — No Retrieval Result
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== FINAL CHUNK =====");
+
+        Console.WriteLine(chunk);
+
+        Console.WriteLine(
+            "=======================");
 
         if (string.IsNullOrWhiteSpace(chunk))
         {
@@ -97,7 +164,7 @@ public class BankingRagService
             };
         }
 
-        // STEP 4 — Confidence Calculation
+        // CONFIDENCE
 
         double similarityScore = 90;
 
@@ -112,8 +179,6 @@ public class BankingRagService
                 similarityScore,
                 intentMatched,
                 categoryMatched);
-
-        // STEP 5 — Reject Low Confidence Queries
 
         if (!confidence.ShouldAnswer)
         {
@@ -136,6 +201,8 @@ public class BankingRagService
             };
         }
 
+        // PROMPT
+
         // STEP 6 — Build Prompt
 
         var prompt = $"""
@@ -151,7 +218,7 @@ Banking Policy:
 {chunk}
 
 Customer Question:
-{question}
+{rewrittenQuestion}
 
 If the answer is not present
 in the policy, respond with:
@@ -159,28 +226,57 @@ in the policy, respond with:
 No policy information available.
 """;
 
-        // STEP 7 — Generate Grounded Answer
+        // LLM
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== CHUNK SENT TO LLM =====");
+
+        Console.WriteLine(chunk);
+
+        Console.WriteLine(
+            "============================");
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== PROMPT =====");
+
+        Console.WriteLine(prompt);
+
+        Console.WriteLine(
+            "==================");
 
         var result =
             await _kernel
-                .InvokePromptAsync(prompt);
+                .InvokePromptAsync(
+                    prompt);
 
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== GENERATED ANSWER =====");
 
+        Console.WriteLine(
+            result.ToString());
+
+        bool grounded = true;
+
+        Console.WriteLine(
+            $"Grounded = {grounded}");
 
         var citations =
             new List<SourceCitation>
             {
-        new SourceCitation
-        {
-            DocumentName =
-                "LoanPolicy.txt",
+            new SourceCitation
+            {
+                DocumentName =
+                    "LoanPolicy.txt",
 
-            PolicyName =
-                "Premium Loan Policy"
-        }
+                PolicyName =
+                    "Premium Loan Policy"
+            }
             };
 
-
+        _memoryService.AddMessage(
+            $"AI: {result}");
 
         return new RagResponse
         {
