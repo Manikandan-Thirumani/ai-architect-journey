@@ -19,4 +19,6 @@ public class RagResponse
     Sources
     { get; set; }
     = [];
+    public bool IsGrounded { get; set; }
+
 }

@@ -19,12 +19,16 @@ public class SemanticRetrievalService
     private readonly LlmRerankerService
         _reranker;
 
+    private readonly KeywordSearchService
+        _keywordSearch;
+
     public SemanticRetrievalService(
         EmbeddingService embeddingService,
         VectorStoreService vectorStore,
         LlmQueryUnderstandingService queryUnderstanding,
         IntentChunkFilterService intentChunkFilter,
-        LlmRerankerService reranker)
+        LlmRerankerService reranker,
+        KeywordSearchService keywordSearch)
     {
         _embeddingService =
             embeddingService;
@@ -40,6 +44,9 @@ public class SemanticRetrievalService
 
         _reranker =
             reranker;
+
+        _keywordSearch =
+            keywordSearch;
     }
 
     public async Task<List<RetrievalResult>>
@@ -65,7 +72,7 @@ public class SemanticRetrievalService
             $"Intent = {queryIntent.Intent}");
 
         // =====================================
-        // QUESTION EMBEDDING
+        // EMBEDDING
         // =====================================
 
         var questionVector =
@@ -95,23 +102,35 @@ public class SemanticRetrievalService
         // VECTOR SEARCH
         // =====================================
 
-        var vectorResults =
-            _vectorStore.Search(
-                questionVector,
-                categoryFilter,
-                20);
+        List<(
+            VectorDocument Document,
+            double Score)> vectorResults;
+
+        if (string.IsNullOrWhiteSpace(
+                categoryFilter))
+        {
+            vectorResults =
+                _vectorStore.Search(
+                    questionVector,
+                    20);
+        }
+        else
+        {
+            vectorResults =
+                _vectorStore.Search(
+                    questionVector,
+                    categoryFilter,
+                    20);
+        }
 
         Console.WriteLine();
         Console.WriteLine(
-            "===== SEARCH RESULTS =====");
+            "===== VECTOR SEARCH RESULTS =====");
 
         foreach (var item in vectorResults)
         {
             Console.WriteLine(
                 $"Score = {item.Score:F4}");
-
-            Console.WriteLine(
-                $"Category = {item.Document.Category}");
 
             Console.WriteLine(
                 $"Document = {item.Document.SourceDocument}");
@@ -123,7 +142,7 @@ public class SemanticRetrievalService
                 item.Document.Content);
 
             Console.WriteLine(
-                "----------------------");
+                "---------------------");
         }
 
         // =====================================
@@ -137,15 +156,126 @@ public class SemanticRetrievalService
 
         Console.WriteLine();
         Console.WriteLine(
-            "===== VECTOR RESULTS =====");
+            "===== INTENT FILTERED RESULTS =====");
 
         foreach (var item in vectorResults)
         {
             Console.WriteLine(
-                $"Vector Score = {item.Score:F4}");
+                $"Score = {item.Score:F4}");
 
             Console.WriteLine(
                 $"Document = {item.Document.SourceDocument}");
+
+            Console.WriteLine(
+                item.Document.Content);
+
+            Console.WriteLine(
+                "---------------------");
+        }
+
+        // =====================================
+        // KEYWORD SEARCH (FALLBACK)
+        // =====================================
+
+        List<SearchResult>
+            keywordResults = new();
+
+        var bestVectorScore =
+            vectorResults.Any()
+                ? vectorResults.Max(
+                    x => x.Score)
+                : 0;
+
+        if (bestVectorScore < 0.60)
+        {
+            keywordResults =
+                _keywordSearch.Search(
+                    question,
+                    categoryFilter);
+
+            Console.WriteLine();
+            Console.WriteLine(
+                "Keyword fallback activated");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== KEYWORD RESULTS =====");
+
+        foreach (var item in keywordResults)
+        {
+            Console.WriteLine(
+                $"Document = {item.DocumentName}");
+
+            Console.WriteLine(
+                $"Policy = {item.PolicyName}");
+
+            Console.WriteLine(
+                $"Score = {item.Score:F4}");
+
+            Console.WriteLine(
+                item.Content);
+
+            Console.WriteLine(
+                "---------------------");
+        }
+
+        // =====================================
+        // HYBRID MERGE
+        // =====================================
+
+        var mergedResults =
+            vectorResults
+            .Concat(
+                keywordResults
+                .Select(x =>
+                (
+                    Document:
+                        new VectorDocument
+                        {
+                            Content =
+                                x.Content,
+
+                            SourceDocument =
+                                x.DocumentName,
+
+                            PolicyName =
+                                x.PolicyName,
+
+                            Category =
+                                categoryFilter ??
+                                "General",
+
+                            Embedding =
+                                Array.Empty<float>()
+                        },
+
+                    Score:
+                        x.Score
+                )))
+            .GroupBy(
+                x => x.Document.Content)
+            .Select(
+                g => g
+                    .OrderByDescending(
+                        x => x.Score)
+                    .First())
+            .ToList();
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== HYBRID RESULTS =====");
+
+        foreach (var item in mergedResults)
+        {
+            Console.WriteLine(
+                $"Score = {item.Score:F4}");
+
+            Console.WriteLine(
+                $"Document = {item.Document.SourceDocument}");
+
+            Console.WriteLine(
+                $"Policy = {item.Document.PolicyName}");
 
             Console.WriteLine(
                 item.Document.Content);
@@ -159,7 +289,7 @@ public class SemanticRetrievalService
         // =====================================
 
         var candidateChunks =
-            vectorResults
+            mergedResults
                 .OrderByDescending(
                     x => x.Score)
                 .Take(5)
@@ -180,8 +310,8 @@ public class SemanticRetrievalService
 
         var rerankInput =
             candidateChunks
-                .Select(x =>
-                    x.Document.Content)
+                .Select(
+                    x => x.Document.Content)
                 .Distinct()
                 .ToList();
 
@@ -219,7 +349,7 @@ public class SemanticRetrievalService
         }
 
         // =====================================
-        // BUILD RESULTS
+        // FINAL RESULTS
         // =====================================
 
         var retrievalResults =
@@ -246,10 +376,6 @@ public class SemanticRetrievalService
                             x.Score
                     })
                 .ToList();
-
-        // =====================================
-        // FINAL RESULTS
-        // =====================================
 
         Console.WriteLine();
         Console.WriteLine(

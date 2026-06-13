@@ -1,3 +1,4 @@
+using AiLearningApi.Middleware;
 using AiLearningApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,105 +13,133 @@ builder.Services.AddHttpClient<OllamaService>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(10);
 });
-builder.Services.AddScoped<SemanticKernelService>();
-builder.Services.AddSingleton<KnowledgeService>();
+//builder.Services.AddScoped<SemanticKernelService>();
+//builder.Services.AddSingleton<KnowledgeService>();
 
-builder.Services.AddSingleton<RagService>();
-builder.Services.AddSingleton<BankKnowledgeService>();
+//builder.Services.AddSingleton<RagService>();
+//builder.Services.AddSingleton<BankKnowledgeService>();
 
-builder.Services.AddSingleton<BankingRagService>();
-builder.Services
-    .AddSingleton<PdfKnowledgeService>();
+//builder.Services.AddSingleton<BankingRagService>();
+//builder.Services
+//    .AddSingleton<PdfKnowledgeService>();
 
-builder.Services
-    .AddSingleton<PdfChunkingService>();
+//builder.Services
+//    .AddSingleton<PdfChunkingService>();
 
-builder.Services
-    .AddSingleton<ChunkRetrievalService>();
+//builder.Services
+//    .AddSingleton<ChunkRetrievalService>();
 
 
-builder.Services
-    .AddSingleton<EmbeddingService>();
+//builder.Services
+//    .AddSingleton<EmbeddingService>();
 
-builder.Services
-    .AddSingleton<VectorStoreService>();
-builder.Services.AddSingleton<SemanticRetrievalService>();
-builder.Services
-    .AddSingleton<RerankerService>();
-builder.Services
-    .AddSingleton<CategoryService>();
-builder.Services
-    .AddSingleton<PolicyExtractorService>();
-builder.Services
-    .AddSingleton<QueryUnderstandingService>();
-builder.Services
-    .AddSingleton<
-        LlmQueryUnderstandingService>();
-builder.Services
-    .AddSingleton<
-        LlmRerankerService>();
-builder.Services.AddSingleton<
-    IntentChunkFilterService>();
-builder.Services
-    .AddSingleton<
-        ConfidenceScoringService>();
-builder.Services
-    .AddSingleton<
-        CitationService>();
-builder.Services
-    .AddSingleton<
-        HallucinationDetectionService>();
-builder.Services
-    .AddSingleton<QueryRewriteService>();
-builder.Services
-    .AddSingleton<
-        ConversationMemoryService>();
+//builder.Services
+//    .AddSingleton<VectorStoreService>();
+//builder.Services.AddSingleton<SemanticRetrievalService>();
+//builder.Services
+//    .AddSingleton<RerankerService>();
+//builder.Services
+//    .AddSingleton<CategoryService>();
+//builder.Services
+//    .AddSingleton<PolicyExtractorService>();
+//builder.Services
+//    .AddSingleton<QueryUnderstandingService>();
+//builder.Services
+//    .AddSingleton<
+//        LlmQueryUnderstandingService>();
+//builder.Services
+//    .AddSingleton<
+//        LlmRerankerService>();
+//builder.Services.AddSingleton<
+//    IntentChunkFilterService>();
+//builder.Services
+//    .AddSingleton<
+//        ConfidenceScoringService>();
+//builder.Services
+//    .AddSingleton<
+//        CitationService>();
+//builder.Services
+//    .AddSingleton<
+//        HallucinationDetectionService>();
+//builder.Services
+//    .AddSingleton<QueryRewriteService>();
+//builder.Services
+//    .AddSingleton<
+//        ConversationMemoryService>();
+//builder.Services.AddSingleton<
+//    KeywordSearchService>();
 
+//builder.Services.AddScoped<FakeRetriever>();
+//builder.Services.AddScoped<ContextBuilderService>();
+//builder.Services.AddScoped<PromptBuilderService>();
+//builder.Services.AddScoped<LlmService>();
+
+//builder.Services.AddScoped<RagOrchestrator>();
+//builder.Services.AddScoped<GroundingValidator>();
+//builder.Services.AddScoped<RagLogger>();
+//builder.Services.AddScoped<RagTestRunner>();
+//builder.Services.AddScoped<RagEvaluationService>();
+//builder.Services.AddScoped<ContextOptimizer>();
+builder.Services.AddScoped<RagService>();
+builder.Services.AddScoped<RagOrchestrator>();
+
+builder.Services.AddScoped<FakeRetriever>(); // ✅ FIX HERE
+
+builder.Services.AddScoped<ContextBuilderService>();
+builder.Services.AddScoped<PromptBuilderService>();
+builder.Services.AddScoped<LlmService>();
+
+builder.Services.AddScoped<GroundingValidator>();
+builder.Services.AddScoped<ContextOptimizer>();
+
+builder.Services.AddScoped<RagEvaluationService>();
+builder.Services.AddScoped<RagTestRunner>();
+builder.Services.AddScoped<RagLogger>();
 var app = builder.Build();
 
-using (var scope =
-       app.Services.CreateScope())
-{
-    var pdfService =
-        scope.ServiceProvider
-            .GetRequiredService<
-                PdfKnowledgeService>();
+//using (var scope =
+//       app.Services.CreateScope())
+//{
+//    var pdfService =
+//        scope.ServiceProvider
+//            .GetRequiredService<
+//                PdfKnowledgeService>();
 
-    var embeddingService =
-        scope.ServiceProvider
-            .GetRequiredService<
-                EmbeddingService>();
+//    var embeddingService =
+//        scope.ServiceProvider
+//            .GetRequiredService<
+//                EmbeddingService>();
 
-    var vectorStore =
-        scope.ServiceProvider
-            .GetRequiredService<
-                VectorStoreService>();
+//    var vectorStore =
+//        scope.ServiceProvider
+//            .GetRequiredService<
+//                VectorStoreService>();
 
-    var policyExtractor =
-        scope.ServiceProvider
-            .GetRequiredService<
-                PolicyExtractorService>();
+//    var policyExtractor =
+//        scope.ServiceProvider
+//            .GetRequiredService<
+//                PolicyExtractorService>();
 
-    var categoryService =
-        scope.ServiceProvider
-            .GetRequiredService<
-                CategoryService>();
+//    var categoryService =
+//        scope.ServiceProvider
+//            .GetRequiredService<
+//                CategoryService>();
 
-    await VectorInitializationService
-        .Initialize(
-            pdfService,
-            embeddingService,
-            vectorStore,
-            policyExtractor,
-            categoryService);
-}
+//    await VectorInitializationService
+//        .Initialize(
+//            pdfService,
+//            embeddingService,
+//            vectorStore,
+//            policyExtractor,
+//            categoryService);
+//}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
+app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpsRedirection();
 
 app.UseAuthorization();

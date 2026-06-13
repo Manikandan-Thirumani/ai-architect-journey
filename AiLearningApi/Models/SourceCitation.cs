@@ -13,4 +13,6 @@ public class SourceCitation
         get;
         set;
     } = string.Empty;
+    public double Score { get; set; }
+    public string SourceDocument { get; set; } = string.Empty;
 }

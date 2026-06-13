@@ -8,17 +8,32 @@ public class VectorStoreService
     private readonly List<VectorDocument>
         _documents = [];
 
+    // =====================================
+    // EXPOSE DOCUMENTS FOR KEYWORD SEARCH
+    // =====================================
+
+    public IReadOnlyList<VectorDocument>
+        Documents => _documents;
+
+    // =====================================
+    // ADD DOCUMENT
+    // =====================================
+
     public void Add(
         VectorDocument document)
     {
         _documents.Add(document);
     }
 
+    // =====================================
+    // VECTOR SEARCH
+    // =====================================
+
     public List<(
-    VectorDocument Document,
-    double Score)> Search(
-    float[] queryVector,
-    int topK)
+        VectorDocument Document,
+        double Score)> Search(
+        float[] queryVector,
+        int topK)
     {
         return _documents
             .Select(doc => (
@@ -27,13 +42,19 @@ public class VectorStoreService
                     VectorHelper.CosineSimilarity(
                         queryVector,
                         doc.Embedding)))
-            .OrderByDescending(x => x.Score)
+            .OrderByDescending(
+                x => x.Score)
             .Take(topK)
             .ToList();
     }
+
+    // =====================================
+    // VECTOR SEARCH WITH CATEGORY
+    // =====================================
+
     public List<(
-    VectorDocument Document,
-    double Score)> Search(
+        VectorDocument Document,
+        double Score)> Search(
         float[] queryVector,
         string category,
         int topK)
@@ -47,41 +68,49 @@ public class VectorStoreService
                     VectorHelper.CosineSimilarity(
                         queryVector,
                         doc.Embedding)))
-            .OrderByDescending(x => x.Score)
+            .OrderByDescending(
+                x => x.Score)
             .Take(topK)
             .ToList();
     }
+
+    // =====================================
+    // MATCHED DOCUMENTS
+    // =====================================
+
     public List<string>
-    GetMatchedDocuments(
-        float[] queryVector,
-        string category)
+        GetMatchedDocuments(
+            float[] queryVector,
+            string category)
     {
         return _documents
             .Where(x =>
-                x.Category ==
-                category)
+                x.Category == category)
             .OrderByDescending(
                 x =>
-                    VectorHelper
-                        .CosineSimilarity(
-                            queryVector,
-                            x.Embedding))
+                    VectorHelper.CosineSimilarity(
+                        queryVector,
+                        x.Embedding))
             .Take(10)
             .Select(x =>
                 x.SourceDocument)
             .Distinct()
             .ToList();
     }
+
+    // =====================================
+    // SEARCH WITH SOURCES
+    // =====================================
+
     public List<RetrievedChunk>
-    SearchWithSources(
-        float[] queryVector,
-        string category,
-        int topK)
+        SearchWithSources(
+            float[] queryVector,
+            string category,
+            int topK)
     {
         return _documents
             .Where(x =>
-                x.Category ==
-                category)
+                x.Category == category)
             .Select(doc =>
                 new RetrievedChunk
                 {
@@ -95,10 +124,9 @@ public class VectorStoreService
                         doc.PolicyName,
 
                     Score =
-                        VectorHelper
-                            .CosineSimilarity(
-                                queryVector,
-                                doc.Embedding)
+                        VectorHelper.CosineSimilarity(
+                            queryVector,
+                            doc.Embedding)
                 })
             .OrderByDescending(
                 x => x.Score)
