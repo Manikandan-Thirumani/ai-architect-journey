@@ -2,15 +2,10 @@
 
 public class RetrievalResult
 {
-    public string Chunk { get; set; }
-        = string.Empty;
+    public string Content { get; set; } = "";
 
-    public double VectorScore { get; set; }
+    public string DocumentName { get; set; } = "";
 
-    public double KeywordScore { get; set; }
-
-    public double FinalScore { get; set; }
-
-    public string Category { get; set; }
-        = string.Empty;
+    public string PolicyName { get; set; } = "";
+    public double Score { get; set; }
 }

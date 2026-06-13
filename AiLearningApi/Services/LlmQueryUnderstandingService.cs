@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.RegularExpressions;
 using AiLearningApi.Models;
 
 namespace AiLearningApi.Services;
@@ -19,7 +20,7 @@ public class LlmQueryUnderstandingService
         Analyze(string question)
     {
         var prompt =
-        """
+        $"""
 You are a banking AI classifier.
 
 Classify the customer question.
@@ -40,10 +41,14 @@ Eligibility
 Benefits
 GeneralQuestion
 
-Return ONLY JSON.
+Return ONLY JSON in this format:
+
+Category: Loan|CreditCard|Deposit|Fraud|DigitalBanking|General
+Intent: MaximumAmount|InterestRate|AgeEligibility|Eligibility|Benefits|GeneralQuestion
 
 Question:
-""" + question;
+{question}
+""";
 
         var response =
             await _ollamaService
@@ -51,52 +56,106 @@ Question:
 
         Console.WriteLine();
         Console.WriteLine(
-            "===== QUERY UNDERSTANDING =====");
+            "===== QUERY UNDERSTANDING RAW =====");
 
         Console.WriteLine(response);
 
         try
         {
-            var start =
-    response.IndexOf('{');
+            // Remove markdown code fences
 
-            var end =
-                response.LastIndexOf('}');
+            response =
+                response
+                    .Replace("```json", "")
+                    .Replace("```", "")
+                    .Trim();
 
-            if (start >= 0 &&
-                end > start)
+            // Extract first JSON object
+
+            var match =
+                Regex.Match(
+                    response,
+                    @"\{[\s\S]*?\}");
+
+            if (!match.Success)
             {
-                response =
-                    response.Substring(
-                        start,
-                        end - start + 1);
+                Console.WriteLine(
+                    "No JSON found.");
+
+                return GetDefaultIntent();
             }
 
+            var json =
+                match.Value;
+
+            Console.WriteLine();
+            Console.WriteLine(
+                "===== EXTRACTED JSON =====");
+
+            Console.WriteLine(json);
+
             var options =
-     new JsonSerializerOptions
-     {
-         PropertyNameCaseInsensitive = true
-     };
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
 
             var result =
                 JsonSerializer.Deserialize<QueryIntent>(
-                    response,
+                    json,
                     options);
 
-            return result ??
-                   new QueryIntent
-                   {
-                       Category = "General",
-                       Intent = "GeneralQuestion"
-                   };
-        }
-        catch
-        {
-            return new QueryIntent
+            if (result == null)
             {
-                Category = "General",
-                Intent = "GeneralQuestion"
-            };
+                return GetDefaultIntent();
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    result.Category))
+            {
+                result.Category =
+                    "General";
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    result.Intent))
+            {
+                result.Intent =
+                    "GeneralQuestion";
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(
+                "===== PARSED RESULT =====");
+
+            Console.WriteLine(
+                $"Category = {result.Category}");
+
+            Console.WriteLine(
+                $"Intent = {result.Intent}");
+
+            return result;
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine();
+            Console.WriteLine(
+                "QUERY UNDERSTANDING ERROR");
+
+            Console.WriteLine(
+                ex.Message);
+
+            return GetDefaultIntent();
+        }
+    }
+
+    private static QueryIntent
+        GetDefaultIntent()
+    {
+        return new QueryIntent
+        {
+            Category = "General",
+            Intent = "GeneralQuestion"
+        };
     }
 }

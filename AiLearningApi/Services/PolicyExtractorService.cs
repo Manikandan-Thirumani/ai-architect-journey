@@ -1,22 +1,32 @@
-﻿using System.Text.RegularExpressions;
-
-namespace AiLearningApi.Services;
+﻿namespace AiLearningApi.Services;
 
 public class PolicyExtractorService
 {
     public string ExtractPolicyName(
         string content)
     {
-        var match =
-            Regex.Match(
-                content,
-                @"Chapter\s+\d+\s*-\s*(.+?Policy)");
+        var lines =
+            content.Split(
+                '\n',
+                StringSplitOptions.RemoveEmptyEntries);
 
-        if (match.Success)
+        foreach (var line in lines)
         {
-            return match.Groups[1]
-                .Value
-                .Trim();
+            var text =
+                line.Trim();
+
+            if (text.StartsWith(
+                    "Chapter",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                var parts =
+                    text.Split('-');
+
+                if (parts.Length > 1)
+                {
+                    return parts[1].Trim();
+                }
+            }
         }
 
         return "Unknown";

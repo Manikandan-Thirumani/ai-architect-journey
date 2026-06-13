@@ -1,4 +1,5 @@
-﻿using AiLearningApi.Helpers;
+﻿using System.Linq;
+using AiLearningApi.Helpers;
 using AiLearningApi.Models;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Ollama;
@@ -26,11 +27,12 @@ public class BankingRagService
 
     private readonly HallucinationDetectionService
         _hallucinationService;
+
     private readonly QueryRewriteService
-    _queryRewriteService;
-    private readonly
-    ConversationMemoryService
-    _memoryService;
+        _queryRewriteService;
+
+    private readonly ConversationMemoryService
+        _memoryService;
 
     public BankingRagService(
         SemanticRetrievalService retrievalService,
@@ -39,8 +41,8 @@ public class BankingRagService
         ConfidenceScoringService confidenceService,
         CitationService citationService,
         HallucinationDetectionService hallucinationService,
-        QueryRewriteService queryRewriteService, ConversationMemoryService
-    memoryService)
+        QueryRewriteService queryRewriteService,
+        ConversationMemoryService memoryService)
     {
         _retrievalService =
             retrievalService;
@@ -62,8 +64,9 @@ public class BankingRagService
 
         _queryRewriteService =
             queryRewriteService;
+
         _memoryService =
-    memoryService;
+            memoryService;
 
         var builder =
             Kernel.CreateBuilder();
@@ -79,14 +82,12 @@ public class BankingRagService
     public async Task<RagResponse> Ask(
         string question)
     {
+        // ===================================
         // MEMORY
-
-        _memoryService.AddMessage(
-            $"User: {question}");
+        // ===================================
 
         var conversationContext =
-            _memoryService
-                .GetContext();
+            _memoryService.GetContext();
 
         Console.WriteLine();
         Console.WriteLine(
@@ -108,15 +109,22 @@ public class BankingRagService
                         question);
         }
 
-
         Console.WriteLine();
         Console.WriteLine(
-            $"Original Question: {question}");
+            "===== REWRITTEN QUESTION =====");
 
         Console.WriteLine(
-            $"Rewritten Question: {rewrittenQuestion}");
+            rewrittenQuestion);
 
-        // INTENT
+        Console.WriteLine(
+            "==============================");
+
+        _memoryService.AddMessage(
+            $"User: {question}");
+
+        // ===================================
+        // QUERY UNDERSTANDING
+        // ===================================
 
         var intent =
             _queryUnderstandingService
@@ -128,23 +136,16 @@ public class BankingRagService
         Console.WriteLine(
             $"Intent = {intent.Intent}");
 
+        // ===================================
         // RETRIEVAL
+        // ===================================
 
-        var chunk =
+        var retrievalResults =
             await _retrievalService
                 .GetRelevantChunks(
                     rewrittenQuestion);
 
-        Console.WriteLine();
-        Console.WriteLine(
-            "===== FINAL CHUNK =====");
-
-        Console.WriteLine(chunk);
-
-        Console.WriteLine(
-            "=======================");
-
-        if (string.IsNullOrWhiteSpace(chunk))
+        if (!retrievalResults.Any())
         {
             return new RagResponse
             {
@@ -164,7 +165,24 @@ public class BankingRagService
             };
         }
 
+        var chunk =
+            string.Join(
+                "\n\n-----------------\n\n",
+                retrievalResults
+                    .Select(x => x.Content));
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "===== FINAL CHUNK =====");
+
+        Console.WriteLine(chunk);
+
+        Console.WriteLine(
+            "=======================");
+
+        // ===================================
         // CONFIDENCE
+        // ===================================
 
         double similarityScore = 90;
 
@@ -201,18 +219,25 @@ public class BankingRagService
             };
         }
 
+        // ===================================
         // PROMPT
-
-        // STEP 6 — Build Prompt
+        // ===================================
 
         var prompt = $"""
 You are an enterprise banking AI assistant.
 
-Use ONLY the information
-provided in the banking policy.
+STRICT RULES:
 
-If multiple policies are relevant,
-combine them into a single answer.
+1. Use ONLY information from Banking Policy.
+2. Do NOT add explanations.
+3. Do NOT add assumptions.
+4. Do NOT add recommendations.
+5. Do NOT add banking knowledge.
+6. Copy policy facts exactly.
+7. Answer in one sentence.
+8. If answer not found return exactly:
+
+No policy information available.
 
 Banking Policy:
 {chunk}
@@ -220,13 +245,9 @@ Banking Policy:
 Customer Question:
 {rewrittenQuestion}
 
-If the answer is not present
-in the policy, respond with:
-
-No policy information available.
+Answer:
 """;
 
-        // LLM
         Console.WriteLine();
         Console.WriteLine(
             "===== CHUNK SENT TO LLM =====");
@@ -245,43 +266,101 @@ No policy information available.
         Console.WriteLine(
             "==================");
 
+        // ===================================
+        // LLM
+        // ===================================
+
         var result =
             await _kernel
                 .InvokePromptAsync(
                     prompt);
 
+        var answer =
+            result.ToString();
+
         Console.WriteLine();
         Console.WriteLine(
             "===== GENERATED ANSWER =====");
 
-        Console.WriteLine(
-            result.ToString());
+        Console.WriteLine(answer);
+
+        // ===================================
+        // HALLUCINATION CHECK
+        // ===================================
 
         bool grounded = true;
+
+        /*
+        grounded =
+            await _hallucinationService
+                .IsGrounded(
+                    answer,
+                    chunk);
+        */
 
         Console.WriteLine(
             $"Grounded = {grounded}");
 
-        var citations =
-            new List<SourceCitation>
+        if (!grounded)
+        {
+            return new RagResponse
             {
-            new SourceCitation
-            {
-                DocumentName =
-                    "LoanPolicy.txt",
+                Answer =
+                    "The answer could not be verified from policy documents.",
 
-                PolicyName =
-                    "Premium Loan Policy"
-            }
+                Confidence = 0,
+
+                Decision =
+                    "Hallucination Detected",
+
+                Intent =
+                    intent.Intent,
+
+                Category =
+                    intent.Category,
+
+                Sources =
+                    new List<SourceCitation>()
             };
+        }
+
+        // ===================================
+        // CITATIONS
+        // ===================================
+
+        var citations =
+            retrievalResults
+                .Select(x =>
+                    new SourceCitation
+                    {
+                        DocumentName =
+                            x.DocumentName,
+
+                        PolicyName =
+                            x.PolicyName
+                    })
+                .DistinctBy(x =>
+                    new
+                    {
+                        x.DocumentName,
+                        x.PolicyName
+                    })
+                .ToList();
+
+        // ===================================
+        // MEMORY SAVE
+        // ===================================
 
         _memoryService.AddMessage(
-            $"AI: {result}");
+            $"AI: {answer}");
+
+        // ===================================
+        // RESPONSE
+        // ===================================
 
         return new RagResponse
         {
-            Answer =
-                result.ToString(),
+            Answer = answer,
 
             Confidence =
                 confidence.FinalConfidence,
