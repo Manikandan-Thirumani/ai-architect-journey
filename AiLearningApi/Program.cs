@@ -1,5 +1,7 @@
 using AiLearningApi.Middleware;
 using AiLearningApi.Services;
+using AiLearningApi.Services.Retrieval;
+using Microsoft.SemanticKernel;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,6 +55,18 @@ builder.Services.AddSingleton<MetadataFilterService>();
 builder.Services.AddSingleton<RetrievalMetricsService>();
 builder.Services.AddSingleton<MultiQueryService>();
 builder.Services.AddSingleton<QueryExpansionService>();
+builder.Services.AddScoped<HybridRanker>();
+builder.Services.AddSingleton(sp =>
+{
+    var builder = Kernel.CreateBuilder();
+
+    builder.AddOllamaChatCompletion(
+        modelId: "phi3",
+        endpoint: new Uri("http://localhost:11434"));
+
+    return builder.Build();
+});
+builder.Services.AddScoped<ILlmQueryExpander, LlmQueryExpander>();
 
 var app = builder.Build();
 

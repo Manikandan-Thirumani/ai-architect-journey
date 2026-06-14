@@ -2,6 +2,8 @@
 
 public class RetrievedChunk
 {
+    public string ChunkId { get; set; } = Guid.NewGuid().ToString();
+
     public string Content
     {
         get;
