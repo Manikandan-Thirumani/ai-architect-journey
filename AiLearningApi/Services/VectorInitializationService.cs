@@ -2,12 +2,12 @@
 
 namespace AiLearningApi.Services;
 
-public class VectorInitializationService
+public static class VectorInitializationService
 {
     public static async Task Initialize(
         PdfKnowledgeService pdfService,
         EmbeddingService embeddingService,
-        VectorStoreService vectorStore,
+        QdrantVectorStoreService qdrantStore,
         PolicyExtractorService policyExtractor,
         CategoryService categoryService)
     {
@@ -26,6 +26,8 @@ public class VectorInitializationService
         Console.WriteLine(
             "====================================");
 
+        bool collectionCreated = false;
+
         foreach (var file in files)
         {
             Console.WriteLine();
@@ -41,6 +43,15 @@ public class VectorInitializationService
                     .GenerateEmbedding(
                         content);
 
+            if (!collectionCreated)
+            {
+                await qdrantStore
+                    .CreateCollectionAsync(
+                        embedding.Length);
+
+                collectionCreated = true;
+            }
+
             var category =
                 categoryService
                     .GetCategory(
@@ -51,49 +62,29 @@ public class VectorInitializationService
                     .ExtractPolicyName(
                         content);
 
-            var document =
-                new VectorDocument
-                {
-                    Id =
-                        Guid.NewGuid()
-                            .ToString(),
-
-                    Content =
-                        content,
-
-                    Embedding =
-                        embedding,
-
-                    Category =
-                        category,
-
-                    PolicyName =
-                        policyName,
-
-                    SourceDocument =
-                        Path.GetFileName(
-                            file)
-                };
-
-            vectorStore.Add(
-                document);
+            await qdrantStore.InsertAsync(
+                Guid.NewGuid().ToString(),
+                embedding,
+                content,
+                policyName,
+                Path.GetFileName(file));
 
             Console.WriteLine(
-                $"SourceDocument = {document.SourceDocument}");
+                $"SourceDocument = {Path.GetFileName(file)}");
 
             Console.WriteLine(
-                $"PolicyName = {document.PolicyName}");
+                $"PolicyName = {policyName}");
 
             Console.WriteLine(
-                $"Category = {document.Category}");
+                $"Category = {category}");
 
             Console.WriteLine(
                 "Content Preview:");
 
             Console.WriteLine(
-                document.Content.Length > 200
-                    ? document.Content[..200]
-                    : document.Content);
+                content.Length > 200
+                    ? content[..200]
+                    : content);
 
             Console.WriteLine(
                 "====================================");
@@ -101,7 +92,7 @@ public class VectorInitializationService
 
         Console.WriteLine();
         Console.WriteLine(
-            "Vector Initialization Completed");
+            "Qdrant Initialization Completed");
 
         Console.WriteLine(
             "====================================");

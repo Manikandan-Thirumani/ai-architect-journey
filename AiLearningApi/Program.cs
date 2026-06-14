@@ -15,7 +15,6 @@ builder.Services.AddHttpClient<OllamaService>();
 // core AI services
 builder.Services.AddScoped<RagService>();
 builder.Services.AddScoped<RagOrchestrator>();
-builder.Services.AddScoped<FakeRetriever>();
 builder.Services.AddScoped<SemanticRetriever>();
 
 builder.Services.AddScoped<ContextBuilderService>();
@@ -46,6 +45,8 @@ builder.Services.AddSingleton<ConfidenceScoringService>();
 builder.Services.AddSingleton<CitationService>();
 builder.Services.AddSingleton<HallucinationDetectionService>();
 builder.Services.AddSingleton<PdfKnowledgeService>();
+builder.Services
+    .AddSingleton<QdrantVectorStoreService>();
 var app = builder.Build();
 
 using (var scope =
@@ -61,10 +62,10 @@ using (var scope =
             .GetRequiredService<
                 EmbeddingService>();
 
-    var vectorStore =
+    var qdrantStore =
         scope.ServiceProvider
             .GetRequiredService<
-                VectorStoreService>();
+                QdrantVectorStoreService>();
 
     var policyExtractor =
         scope.ServiceProvider
@@ -80,10 +81,12 @@ using (var scope =
         .Initialize(
             pdfService,
             embeddingService,
-            vectorStore,
+            qdrantStore,
             policyExtractor,
             categoryService);
 }
+
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
