@@ -167,4 +167,34 @@ public class QdrantVectorStoreService
             throw;
         }
     }
+    public async Task<List<RetrievedChunk>>
+    GetAllDocumentsAsync()
+    {
+        var results =
+            await _client.ScrollAsync(
+                collectionName:
+                    CollectionName,
+
+                limit: 100);
+
+        return results.Result
+            .Select(x =>
+                new RetrievedChunk
+                {
+                    Content =
+                        x.Payload["content"]
+                            .StringValue,
+
+                    PolicyName =
+                        x.Payload["policy"]
+                            .StringValue,
+
+                    SourceDocument =
+                        x.Payload["source"]
+                            .StringValue,
+
+                    Score = 0
+                })
+            .ToList();
+    }
 }

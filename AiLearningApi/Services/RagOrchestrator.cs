@@ -4,7 +4,9 @@ namespace AiLearningApi.Services;
 
 public class RagOrchestrator
 {
-    private readonly SemanticRetriever _retriever;
+    private readonly
+        HybridSearchService
+            _retriever;
     private readonly ContextBuilderService _contextBuilder;
     private readonly PromptBuilderService _promptBuilder;
     private readonly LlmService _llm;
@@ -13,7 +15,7 @@ public class RagOrchestrator
     private readonly ContextOptimizer _optimizer;
 
     public RagOrchestrator(
-        SemanticRetriever retriever,
+        HybridSearchService retriever,
         ContextBuilderService contextBuilder,
         PromptBuilderService promptBuilder,
         LlmService llm,
@@ -36,7 +38,7 @@ public class RagOrchestrator
 
         // 1. Retrieve from Qdrant
         var chunks =
-            await _retriever.Retrieve(question);
+            await _retriever.SearchAsync(question);
 
         chunks =
             _optimizer.Optimize(chunks);

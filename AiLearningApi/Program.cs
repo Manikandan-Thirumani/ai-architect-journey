@@ -47,6 +47,13 @@ builder.Services.AddSingleton<HallucinationDetectionService>();
 builder.Services.AddSingleton<PdfKnowledgeService>();
 builder.Services
     .AddSingleton<QdrantVectorStoreService>();
+builder.Services
+    .AddScoped<HybridSearchService>();
+builder.Services.AddSingleton<MetadataFilterService>();
+builder.Services.AddSingleton<RetrievalMetricsService>();
+builder.Services.AddSingleton<MultiQueryService>();
+builder.Services.AddSingleton<QueryExpansionService>();
+
 var app = builder.Build();
 
 using (var scope =

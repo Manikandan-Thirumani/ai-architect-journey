@@ -177,7 +177,7 @@ public class SemanticRetrievalService
         // KEYWORD SEARCH (FALLBACK)
         // =====================================
 
-        List<SearchResult>
+        List<RetrievedChunk>
             keywordResults = new();
 
         var bestVectorScore =
@@ -189,9 +189,8 @@ public class SemanticRetrievalService
         if (bestVectorScore < 0.60)
         {
             keywordResults =
-                _keywordSearch.Search(
-                    question,
-                    categoryFilter);
+                await _keywordSearch
+                    .SearchAsync(question);
 
             Console.WriteLine();
             Console.WriteLine(
@@ -205,7 +204,7 @@ public class SemanticRetrievalService
         foreach (var item in keywordResults)
         {
             Console.WriteLine(
-                $"Document = {item.DocumentName}");
+                $"Document = {item.SourceDocument}");
 
             Console.WriteLine(
                 $"Policy = {item.PolicyName}");
@@ -215,9 +214,6 @@ public class SemanticRetrievalService
 
             Console.WriteLine(
                 item.Content);
-
-            Console.WriteLine(
-                "---------------------");
         }
 
         // =====================================
@@ -226,33 +222,33 @@ public class SemanticRetrievalService
 
         var mergedResults =
             vectorResults
-            .Concat(
-                keywordResults
-                .Select(x =>
-                (
-                    Document:
-                        new VectorDocument
-                        {
-                            Content =
-                                x.Content,
+.Concat(
+    keywordResults
+    .Select(x =>
+    (
+        Document:
+            new VectorDocument
+            {
+                Content =
+                    x.Content,
 
-                            SourceDocument =
-                                x.DocumentName,
+                SourceDocument =
+                    x.SourceDocument,
 
-                            PolicyName =
-                                x.PolicyName,
+                PolicyName =
+                    x.PolicyName,
 
-                            Category =
-                                categoryFilter ??
-                                "General",
+                Category =
+                    categoryFilter ??
+                    "General",
 
-                            Embedding =
-                                Array.Empty<float>()
-                        },
+                Embedding =
+                    Array.Empty<float>()
+            },
 
-                    Score:
-                        x.Score
-                )))
+        Score:
+            (double)x.Score
+    )))
             .GroupBy(
                 x => x.Document.Content)
             .Select(

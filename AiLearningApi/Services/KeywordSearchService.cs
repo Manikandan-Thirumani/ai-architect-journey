@@ -4,88 +4,53 @@ namespace AiLearningApi.Services;
 
 public class KeywordSearchService
 {
-    private readonly VectorStoreService
-        _vectorStore;
+    private readonly
+        QdrantVectorStoreService
+            _qdrant;
 
     public KeywordSearchService(
-        VectorStoreService vectorStore)
+        QdrantVectorStoreService qdrant)
     {
-        _vectorStore = vectorStore;
+        _qdrant = qdrant;
     }
 
-    public List<SearchResult>
-        Search(
-            string question,
-            string? category = null)
+    public async Task<
+        List<RetrievedChunk>>
+        SearchAsync(
+            string question)
     {
         var keywords =
             question
                 .ToLower()
-                .Split(
-                    ' ',
+                .Split(' ',
                     StringSplitOptions
                         .RemoveEmptyEntries)
-                .Where(x =>
-                    x.Length > 2)
+                .Where(x => x.Length > 2)
                 .ToList();
 
-        var documents =
-            _vectorStore.Documents
-                .AsEnumerable();
+        var docs =
+            await _qdrant
+                .GetAllDocumentsAsync();
 
-        // =====================================
-        // CATEGORY FILTER
-        // =====================================
-
-        if (!string.IsNullOrWhiteSpace(
-                category))
-        {
-            documents =
-                documents
-                    .Where(x =>
-                        x.Category ==
-                        category);
-        }
-
-        // =====================================
-        // KEYWORD SEARCH
-        // =====================================
-
-        var results =
-            documents
-                .Select(doc =>
-                {
-                    var content =
+        return docs
+            .Select(doc =>
+            {
+                var score =
+                    keywords.Count(k =>
                         doc.Content
-                            .ToLower();
+                           .ToLower()
+                           .Contains(k));
 
-                    var matchCount =
-                        keywords.Count(k =>
-                            content.Contains(k));
+                doc.Score =
+                    score * 0.10;
 
-                    return new SearchResult
-                    {
-                        Content =
-                            doc.Content,
-
-                        DocumentName =
-                            doc.SourceDocument,
-
-                        PolicyName =
-                            doc.PolicyName,
-
-                        // Lower than vector score
-                        Score =
-                            matchCount * 0.10
-                    };
-                })
-                .Where(x =>
-                    x.Score > 0)
-                .OrderByDescending(
-                    x => x.Score)
-                .Take(10)
-                .ToList();
-
-        return results;
+                return doc;
+            })
+            .Where(x =>
+                x.Score > 0)
+            .OrderByDescending(
+                x => x.Score)
+            .Take(10)
+            .ToList();
     }
 }
