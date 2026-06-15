@@ -1,5 +1,7 @@
 ﻿using AiLearningApi.Models;
 
+namespace AiLearningApi.Services.Retrieval;
+
 public class RrfRanker : IRrfRanker
 {
     private const int K = 60;
@@ -10,27 +12,36 @@ public class RrfRanker : IRrfRanker
         var scores =
             new Dictionary<string, double>();
 
-        foreach (var set in resultSets)
+        var chunkLookup =
+            new Dictionary<string, RetrievedChunk>();
+
+        foreach (var resultSet in resultSets)
         {
-            for (int i = 0; i < set.Count; i++)
+            for (int rank = 0;
+                 rank < resultSet.Count;
+                 rank++)
             {
-                var chunk = set[i];
+                var chunk = resultSet[rank];
 
-                double score =
-                    1.0 / (K + i + 1);
+                var chunkId = chunk.ChunkId;
 
-                if (!scores.ContainsKey(chunk.ChunkId))
-                    scores[chunk.ChunkId] = 0;
+                chunkLookup[chunkId] = chunk;
 
-                scores[chunk.ChunkId] += score;
+                var score =
+                    1.0 / (K + rank + 1);
+
+                if (!scores.ContainsKey(chunkId))
+                {
+                    scores[chunkId] = 0;
+                }
+
+                scores[chunkId] += score;
             }
         }
 
-        return resultSets
-            .SelectMany(x => x)
-            .DistinctBy(x => x.ChunkId)
-            .OrderByDescending(
-                x => scores[x.ChunkId])
+        return scores
+            .OrderByDescending(x => x.Value)
+            .Select(x => chunkLookup[x.Key])
             .ToList();
     }
 }

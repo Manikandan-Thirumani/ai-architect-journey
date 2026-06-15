@@ -1,43 +1,30 @@
 ﻿using AiLearningApi.Models;
 
-namespace AiLearningApi.Services;
+namespace AiLearningApi.Services.Retrieval;
 
 public class HybridSearchService
 {
-    private readonly
-        SemanticRetriever
-            _semantic;
-
-    private readonly
-        KeywordSearchService
-            _keyword;
+    private readonly ISemanticRetriever _semantic;
+    private readonly KeywordSearchService _keyword;
 
     public HybridSearchService(
-        SemanticRetriever semantic,
+        ISemanticRetriever semantic,
         KeywordSearchService keyword)
     {
         _semantic = semantic;
         _keyword = keyword;
     }
 
-    public async Task<
-        List<RetrievedChunk>>
-        SearchAsync(
-            string question)
+    public async Task<List<RetrievedChunk>>
+        SearchAsync(string question)
     {
         var vectorResults =
             await _semantic
-                .Retrieve(question);
+                .RetrieveAsync(question);
 
         var keywordResults =
             await _keyword
                 .SearchAsync(question);
-
-        Console.WriteLine(
-            $"Vector Results = {vectorResults.Count}");
-
-        Console.WriteLine(
-            $"Keyword Results = {keywordResults.Count}");
 
         var merged =
             vectorResults
@@ -47,22 +34,16 @@ public class HybridSearchService
                     x.Content)
                 .Select(g =>
                 {
-                    var item =
-                        g.First();
+                    var item = g.First();
 
                     item.Score =
-                        g.Average(
-                            x => x.Score);
+                        g.Average(x => x.Score);
 
                     return item;
                 })
-                .OrderByDescending(
-                    x => x.Score)
+                .OrderByDescending(x => x.Score)
                 .Take(10)
                 .ToList();
-
-        Console.WriteLine(
-            $"Hybrid Results = {merged.Count}");
 
         return merged;
     }

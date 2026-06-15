@@ -1,56 +1,56 @@
 ﻿using AiLearningApi.Models;
 
-namespace AiLearningApi.Services;
+namespace AiLearningApi.Services.Retrieval;
 
 public class KeywordSearchService
 {
-    private readonly
-        QdrantVectorStoreService
-            _qdrant;
+    private readonly List<RetrievedChunk> _allChunks;
 
-    public KeywordSearchService(
-        QdrantVectorStoreService qdrant)
+    public KeywordSearchService()
     {
-        _qdrant = qdrant;
+        _allChunks = new List<RetrievedChunk>();
     }
 
-    public async Task<
-        List<RetrievedChunk>>
-        SearchAsync(
-            string question)
+    public void LoadChunks(
+        List<RetrievedChunk> chunks)
     {
-        var keywords =
-            question
-                .ToLower()
-                .Split(' ',
-                    StringSplitOptions
-                        .RemoveEmptyEntries)
-                .Where(x => x.Length > 2)
-                .ToList();
+        _allChunks.Clear();
+        _allChunks.AddRange(chunks);
+    }
 
-        var docs =
-            await _qdrant
-                .GetAllDocumentsAsync();
+    public Task<List<RetrievedChunk>> SearchAsync(
+        string query)
+    {
+        var words = query
+            .ToLower()
+            .Split(' ',
+                StringSplitOptions.RemoveEmptyEntries);
 
-        return docs
-            .Select(doc =>
+        var results = _allChunks
+            .Select(chunk =>
             {
-                var score =
-                    keywords.Count(k =>
-                        doc.Content
-                           .ToLower()
-                           .Contains(k));
+                int matches =
+                    words.Count(word =>
+                        chunk.Content
+                            .ToLower()
+                            .Contains(word));
 
-                doc.Score =
-                    score * 0.10;
-
-                return doc;
+                return new
+                {
+                    Chunk = chunk,
+                    Score = matches
+                };
             })
-            .Where(x =>
-                x.Score > 0)
-            .OrderByDescending(
-                x => x.Score)
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Score)
             .Take(10)
+            .Select(x =>
+            {
+                x.Chunk.Score = x.Score;
+                return x.Chunk;
+            })
             .ToList();
+
+        return Task.FromResult(results);
     }
 }

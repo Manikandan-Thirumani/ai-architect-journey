@@ -1,4 +1,5 @@
 ﻿using AiLearningApi.Models;
+using AiLearningApi.Services.Retrieval;
 
 namespace AiLearningApi.Services;
 

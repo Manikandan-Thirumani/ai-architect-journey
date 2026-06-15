@@ -1,8 +1,9 @@
 ﻿using AiLearningApi.Models;
+using AiLearningApi.Services.Retrieval;
 
 namespace AiLearningApi.Services;
 
-public class SemanticRetriever
+public class SemanticRetriever : ISemanticRetriever
 {
     private readonly QdrantVectorStoreService _qdrantStore;
     private readonly EmbeddingService _embeddingService;
@@ -15,7 +16,7 @@ public class SemanticRetriever
         _embeddingService = embeddingService;
     }
 
-    public async Task<List<RetrievedChunk>> Retrieve(
+    public async Task<List<RetrievedChunk>> RetrieveAsync(
         string query)
     {
         var queryVector =

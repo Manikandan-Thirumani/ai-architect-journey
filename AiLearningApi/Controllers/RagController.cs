@@ -1,4 +1,5 @@
 ﻿using AiLearningApi.Services;
+using AiLearningApi.Services.Retrieval;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
@@ -7,9 +8,11 @@ public class RagController : ControllerBase
 {
     private readonly RagService _ragService;
 
+
     public RagController(RagService ragService)
     {
         _ragService = ragService;
+       
     }
 
     [HttpGet("ask")]
@@ -19,4 +22,6 @@ public class RagController : ControllerBase
 
         return Ok(response);
     }
+
+   
 }

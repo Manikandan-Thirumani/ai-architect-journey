@@ -67,7 +67,10 @@ builder.Services.AddSingleton(sp =>
     return builder.Build();
 });
 builder.Services.AddScoped<ILlmQueryExpander, LlmQueryExpander>();
-
+builder.Services.AddScoped<IRrfRanker, RrfRanker>();
+builder.Services.AddScoped<IMultiQueryRetriever, MultiQueryRetriever>();
+builder.Services.AddScoped<ISemanticRetriever, SemanticRetriever>();
+builder.Services.AddScoped<HybridSearchService>();
 var app = builder.Build();
 
 using (var scope =
