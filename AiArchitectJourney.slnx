@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="AiAgentApi/AiAgentApi.csproj" Id="b5389415-fe8d-4063-9cea-b125c78eb813" />
   <Project Path="AiLearningApi/AiLearningApi.csproj" Id="012196d8-c0e7-498f-8dfc-5b906316ee2b" />
 </Solution>

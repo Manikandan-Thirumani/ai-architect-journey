@@ -1,4 +1,5 @@
 ﻿using AiLearningApi.Services;
+using AiLearningApi.Services.Evaluation;
 using AiLearningApi.Services.Retrieval;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,12 +8,13 @@ using Microsoft.AspNetCore.Mvc;
 public class RagController : ControllerBase
 {
     private readonly RagService _ragService;
+    private readonly RetrievalEvaluator
+_evaluator;
 
-
-    public RagController(RagService ragService)
+    public RagController(RagService ragService, RetrievalEvaluator evaluator)
     {
         _ragService = ragService;
-       
+        _evaluator = evaluator;
     }
 
     [HttpGet("ask")]
@@ -22,6 +24,7 @@ public class RagController : ControllerBase
 
         return Ok(response);
     }
-
    
+
+
 }

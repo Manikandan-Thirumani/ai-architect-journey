@@ -1,5 +1,7 @@
 using AiLearningApi.Middleware;
 using AiLearningApi.Services;
+using AiLearningApi.Services.Evaluation;
+using AiLearningApi.Services.Reliability;
 using AiLearningApi.Services.Retrieval;
 using Microsoft.SemanticKernel;
 
@@ -71,6 +73,12 @@ builder.Services.AddScoped<IRrfRanker, RrfRanker>();
 builder.Services.AddScoped<IMultiQueryRetriever, MultiQueryRetriever>();
 builder.Services.AddScoped<ISemanticRetriever, SemanticRetriever>();
 builder.Services.AddScoped<HybridSearchService>();
+builder.Services
+    .AddScoped<RetrievalEvaluator>();
+builder.Services.AddScoped<
+    RetrievalBenchmarkService>();
+builder.Services.AddScoped<
+    StructuredOutputService>();
 var app = builder.Build();
 
 using (var scope =
