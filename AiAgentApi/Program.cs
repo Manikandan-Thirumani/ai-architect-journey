@@ -34,6 +34,16 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IPlanGeneratorService,
     PlanGeneratorService>();
+builder.Services
+    .AddScoped<RetrievalAgent>();
+
+builder.Services
+    .AddScoped<DateAgent>();
+
+builder.Services
+    .AddScoped<CoordinatorAgent>();
+builder.Services.AddScoped<ReviewerAgent>();
+builder.Services.AddScoped<HumanApprovalAgent>();
 
 var app = builder.Build();
 
