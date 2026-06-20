@@ -26,6 +26,14 @@ builder.Services.AddScoped<
     AssistantAgent>();
 builder.Services.AddScoped<
     AgentExecutorService>();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<
+    RetrievalPlugin>();
+builder.Services.AddScoped<
+    IKnowledgeService,KnowledgeService>();
+builder.Services.AddScoped<
+    IPlanGeneratorService,
+    PlanGeneratorService>();
 
 var app = builder.Build();
 

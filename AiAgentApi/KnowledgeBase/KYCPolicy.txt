@@ -1,0 +1,5 @@
+﻿Chapter 1 - KYC Requirements
+
+Customers must provide Aadhaar, PAN and address proof for verification.
+
+KYC verification is mandatory before account activation.
