@@ -19,11 +19,25 @@ public class MultiAgentController
 
     [HttpGet("ask")]
     public async Task<IActionResult> Ask(
+        string userId,
         string question)
     {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return BadRequest(
+                "userId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(question))
+        {
+            return BadRequest(
+                "question is required.");
+        }
+
         var result =
-            await _coordinator
-                .ExecuteAsync(question);
+            await _coordinator.ExecuteAsync(
+                userId,
+                question);
 
         return Ok(result);
     }

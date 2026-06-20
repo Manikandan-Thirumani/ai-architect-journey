@@ -1,4 +1,6 @@
-﻿using AiAgentApi.Models;
+﻿
+using AiAgentApi.Models;
+using AiAgentApi.Services;
 using Microsoft.SemanticKernel;
 using System.Diagnostics;
 using System.Text.Json;
@@ -11,25 +13,40 @@ public class CoordinatorAgent
     private readonly DateAgent _dateAgent;
     private readonly ReviewerAgent _reviewerAgent;
     private readonly HumanApprovalAgent _humanApprovalAgent;
+    private readonly GroundingValidatorAgent _groundingValidator;
     private readonly Kernel _kernel;
+    private readonly IConversationMemoryService _memory;
 
     public CoordinatorAgent(
         RetrievalAgent retrievalAgent,
         DateAgent dateAgent,
         ReviewerAgent reviewerAgent,
         Kernel kernel,
-        HumanApprovalAgent humanApprovalAgent)
+        HumanApprovalAgent humanApprovalAgent,
+        IConversationMemoryService memory,
+        GroundingValidatorAgent groundingValidator)
     {
         _retrievalAgent = retrievalAgent;
         _dateAgent = dateAgent;
         _reviewerAgent = reviewerAgent;
         _kernel = kernel;
         _humanApprovalAgent = humanApprovalAgent;
+        _memory = memory;
+        _groundingValidator = groundingValidator;
     }
 
     public async Task<CopilotResponse> ExecuteAsync(
+        string userId,
         string question)
     {
+        /*
+         * Save user question into memory.
+         */
+        await _memory.AddAsync(
+            userId,
+            "User",
+            question);
+
         var stopwatch =
             Stopwatch.StartNew();
 
@@ -108,7 +125,6 @@ public class CoordinatorAgent
          * Week 10 Day 4
          * Conflict Resolution
          */
-
         var resolvedResults =
             ResolveConflicts(results.ToList());
 
@@ -116,15 +132,67 @@ public class CoordinatorAgent
             "Conflict Resolution Completed.");
 
         /*
+         * Week 11 Day 7
+         * Grounding Validation
+         */
+        Console.WriteLine(
+            "Validating evidence grounding...");
+
+        var grounding =
+            await _groundingValidator.ValidateAsync(
+                question,
+                resolvedResults);
+
+        Console.WriteLine(
+            $"Grounded: {grounding.IsGrounded}");
+
+        Console.WriteLine(
+            $"Grounding Reason: {grounding.Reason}");
+
+        if (!grounding.IsGrounded)
+        {
+            stopwatch.Stop();
+
+            var refusalMessage =
+                "I could not find information related to this question in the available knowledge base.";
+
+            /*
+             * Save refusal response into memory.
+             */
+            await _memory.AddAsync(
+                userId,
+                "Assistant",
+                refusalMessage);
+
+            return new CopilotResponse
+            {
+                Question = question,
+
+                FinalAnswer = refusalMessage,
+
+                HumanApprovalRequired = false,
+
+                ApprovalReason = "",
+
+                AgentsUsed = routing.Agents,
+
+                RoutingReason = routing.Reason,
+
+                ExecutionTimeMs =
+                    stopwatch.ElapsedMilliseconds
+            };
+        }
+
+        /*
          * Week 10 Day 5
          * Reviewer Agent
          */
-
         Console.WriteLine(
             "Sending findings to ReviewerAgent...");
 
         var reviewedResponse =
             await _reviewerAgent.ReviewAsync(
+                userId,
                 resolvedResults,
                 question);
 
@@ -132,7 +200,6 @@ public class CoordinatorAgent
          * Week 10 Day 6
          * Human Approval
          */
-
         var approval =
             _humanApprovalAgent.Evaluate(
                 question,
@@ -144,10 +211,16 @@ public class CoordinatorAgent
         stopwatch.Stop();
 
         /*
-         * Week 10 Day 7
+         * Save assistant response into memory.
+         */
+        await _memory.AddAsync(
+            userId,
+            "Assistant",
+            reviewedResponse);
+
+        /*
          * Enterprise Copilot Response
          */
-
         return new CopilotResponse
         {
             Question = question,
@@ -273,7 +346,6 @@ Question:
         /*
          * Fallback Routing
          */
-
         Console.WriteLine(
             "Router failed. Using fallback routing.");
 
@@ -343,3 +415,4 @@ Question:
         return uniqueResponses;
     }
 }
+
