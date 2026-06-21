@@ -1,4 +1,8 @@
 <Solution>
-  <Project Path="AiAgentApi/AiAgentApi.csproj" Id="b5389415-fe8d-4063-9cea-b125c78eb813" />
-  <Project Path="AiLearningApi/AiLearningApi.csproj" Id="012196d8-c0e7-498f-8dfc-5b906316ee2b" />
+  <Folder Name="/Learnings/">
+    <Project Path="AiAgentApi/AiAgentApi.csproj" Id="b5389415-fe8d-4063-9cea-b125c78eb813" />
+    <Project Path="AiLearningApi/AiLearningApi.csproj" Id="012196d8-c0e7-498f-8dfc-5b906316ee2b" />
+    <Project Path="MCPLearning/MCPLearning.csproj" Id="7bfa14b6-80ec-4b63-8c6d-998eed6e1d97" />
+  </Folder>
+  <Folder Name="/Practice/" />
 </Solution>
