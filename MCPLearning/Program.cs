@@ -1,3 +1,4 @@
+using MCPLearning.MCP;
 using MCPLearning.Plugins;
 using MCPLearning.Services;
 using MCPLearning.Tools;
@@ -50,6 +51,12 @@ builder.Services.AddScoped<DatePlugin>();
 builder.Services.AddHttpClient<CurrencyPlugin>();
 builder.Services.AddSingleton<
     ToolAuthorizationService>();
+builder.Services.AddScoped<McpServerService>();
+builder.Services.AddSingleton<
+    McpAuthorizationService>();
+builder.Services.AddSingleton<AuditService>();
+builder.Services.AddSingleton<
+    McpRateLimitService>();
 
 var app = builder.Build();
 

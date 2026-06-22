@@ -1,4 +1,4 @@
-﻿namespace MCPLearning.Models;
+﻿namespace MCPLearning.MCP;
 
 public class McpToolDefinition
 {
@@ -6,5 +6,5 @@ public class McpToolDefinition
 
     public string Description { get; set; } = "";
 
-    public object InputSchema { get; set; } = default!;
+    public object? InputSchema { get; set; }
 }

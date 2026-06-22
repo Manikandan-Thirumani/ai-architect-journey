@@ -1,6 +1,6 @@
-﻿using MCPLearning.Models;
-using MCPLearning.Services;
+﻿using MCPLearning.MCP;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace MCPLearning.Controllers;
 
@@ -8,69 +8,141 @@ namespace MCPLearning.Controllers;
 [Route("api/mcp")]
 public class McpController : ControllerBase
 {
-    private readonly McpToolRegistry _registry;
+    private readonly McpServerService _mcpServer;
 
     public McpController(
-        McpToolRegistry registry)
+        McpServerService mcpServer)
     {
-        _registry = registry;
+        _mcpServer = mcpServer;
     }
 
-    [HttpGet("tools")]
-    public IActionResult GetTools()
+    [HttpPost]
+    public async Task<IActionResult> Handle(
+        [FromBody] McpRequest request)
     {
-        var tools =
-            _registry
-                .GetAll()
-                .Select(x => new McpToolDefinition
-                {
-                    Name = x.Name,
-                    Description = x.Description,
-                    InputSchema = x.InputSchema
-                });
+        Console.WriteLine(
+            $"MCP Method: {request.Method}");
 
-        return Ok(tools);
-    }
-
-    [HttpPost("invoke")]
-    public async Task<IActionResult> Invoke(
-        McpToolRequest request)
-    {
-        var tool =
-            _registry.Get(
-                request.ToolName);
-
-        if (tool == null)
+        switch (request.Method)
         {
-            return NotFound(
-                new McpToolResponse
-                {
-                    Success = false,
-                    Error = "Tool not found."
-                });
-        }
+            case "tools/list":
 
-        try
-        {
-            var result =
-                await tool.ExecuteAsync(
-                    request.Arguments);
+                return Ok(
+                    new McpResponse
+                    {
+                        Id = request.Id,
 
-            return Ok(
-                new McpToolResponse
+                        Result = new
+                        {
+                            tools =
+                                _mcpServer.GetTools()
+                        }
+                    });
+
+            case "tools/call":
+
+                try
                 {
-                    Success = true,
-                    Result = result
-                });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(
-                new McpToolResponse
+                    var toolRequest =
+                        JsonSerializer.Deserialize<McpToolCallRequest>(
+                            request.Params?.ToString() ?? "",
+                            new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
+
+                    if (toolRequest == null)
+                    {
+                        return Ok(
+                            new McpResponse
+                            {
+                                Id = request.Id,
+
+                                Error = new
+                                {
+                                    code = -32602,
+                                    message = "Invalid tool request."
+                                }
+                            });
+                    }
+
+                    Console.WriteLine(
+                        $"Role: {toolRequest.Role}");
+
+                    Console.WriteLine(
+                        $"Tool: {toolRequest.Name}");
+
+                    var result =
+                        await _mcpServer
+                            .CallToolAsync(
+                                toolRequest.Role,
+                                toolRequest.Name,
+                                toolRequest.Arguments);
+
+                    return Ok(
+                        new McpResponse
+                        {
+                            Id = request.Id,
+
+                            Result = result
+                        });
+                }
+                catch (UnauthorizedAccessException ex)
                 {
-                    Success = false,
-                    Error = ex.Message
-                });
+                    return Ok(
+                        new McpResponse
+                        {
+                            Id = request.Id,
+
+                            Error = new
+                            {
+                                code = -32001,
+                                message = ex.Message
+                            }
+                        });
+                }
+                catch (ArgumentException ex)
+                {
+                    return Ok(
+                        new McpResponse
+                        {
+                            Id = request.Id,
+
+                            Error = new
+                            {
+                                code = -32602,
+                                message = ex.Message
+                            }
+                        });
+                }
+                catch (Exception ex)
+                {
+                    return Ok(
+                        new McpResponse
+                        {
+                            Id = request.Id,
+
+                            Error = new
+                            {
+                                code = -32603,
+                                message = ex.Message
+                            }
+                        });
+                }
+
+            default:
+
+                return Ok(
+                    new McpResponse
+                    {
+                        Id = request.Id,
+
+                        Error = new
+                        {
+                            code = -32601,
+                            message = "Method not found"
+                        }
+                    });
         }
     }
 }
