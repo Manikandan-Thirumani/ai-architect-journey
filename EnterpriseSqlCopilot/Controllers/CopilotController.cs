@@ -1,5 +1,4 @@
-﻿using EnterpriseSqlCopilot.Models;
-using EnterpriseSqlCopilot.Services;
+﻿using EnterpriseSqlCopilot.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EnterpriseSqlCopilot.Controllers;
@@ -9,23 +8,23 @@ namespace EnterpriseSqlCopilot.Controllers;
 public class CopilotController
     : ControllerBase
 {
-    private readonly CopilotService
+    private readonly SqlCopilotOrchestrator
         _copilot;
 
     public CopilotController(
-        CopilotService copilot)
+        SqlCopilotOrchestrator copilot)
     {
         _copilot = copilot;
     }
 
-    [HttpPost("ask")]
+    [HttpGet("ask")]
     public async Task<IActionResult> Ask(
-        SqlRequest request)
+        string question)
     {
-        var response =
-            await _copilot.AskAsync(
-                request.Question);
+        var result =
+            await _copilot
+                .AskAsync(question);
 
-        return Ok(response);
+        return Ok(result);
     }
 }

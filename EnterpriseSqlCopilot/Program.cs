@@ -1,32 +1,20 @@
+using EnterpriseSqlCopilot.MCP;
 using EnterpriseSqlCopilot.Services;
 using Microsoft.SemanticKernel;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
 builder.Services.AddOpenApi();
-builder.Services.AddScoped<DatabaseService>();
 
-builder.Services.AddScoped<SchemaRepository>();
-
-builder.Services.AddScoped<
-    SchemaDiscoveryService>();
-builder.Services.AddScoped<SqlGenerationService>();
-builder.Services.AddScoped<
-    SqlGuardrailService>();
-
-builder.Services.AddScoped<
-    SqlExecutionService>();
-
-builder.Services.AddScoped<
-    CopilotService>();
+//
+// Semantic Kernel + Ollama
+//
 builder.Services.AddSingleton<Kernel>(sp =>
 {
-    var kernelBuilder =
-        Kernel.CreateBuilder();
+    var kernelBuilder = Kernel.CreateBuilder();
 
     kernelBuilder.AddOllamaChatCompletion(
         modelId: "phi3",
@@ -34,9 +22,38 @@ builder.Services.AddSingleton<Kernel>(sp =>
 
     return kernelBuilder.Build();
 });
+
+//
+// Legacy SQL services
+// (Keep temporarily until full MCP migration)
+//
+builder.Services.AddScoped<DatabaseService>();
+
+builder.Services.AddScoped<SchemaRepository>();
+
+builder.Services.AddScoped<SchemaDiscoveryService>();
+
+builder.Services.AddScoped<SqlExecutionService>();
+
+builder.Services.AddScoped<SqlGuardrailService>();
+
+builder.Services.AddScoped<SqlGenerationService>();
+builder.Services.AddScoped<
+    SqlCopilotOrchestrator>();
+//
+// MCP Client
+//
+builder.Services.AddHttpClient<McpClientService>(client =>
+{
+    client.BaseAddress =
+        new Uri("https://localhost:7277");
+});
+
 var app = builder.Build();
 
+//
 // Configure the HTTP request pipeline.
+//
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
