@@ -44,6 +44,32 @@ public class DatabaseMcpServerService
 
             new()
             {
+                Name = "validate_sql",
+
+                Description =
+                    "Validates SQL before execution.",
+
+                InputSchema = new
+                {
+                    type = "object",
+
+                    properties = new
+                    {
+                        sql = new
+                        {
+                            type = "string"
+                        }
+                    },
+
+                    required = new[]
+                    {
+                        "sql"
+                    }
+                }
+            },
+
+            new()
+            {
                 Name = "execute_sql",
 
                 Description =
@@ -102,12 +128,77 @@ public class DatabaseMcpServerService
     {
         switch (toolName)
         {
+            /*
+             * MCP TOOL:
+             * get_schema
+             */
             case "get_schema":
                 {
                     return await _schema
                         .GetSchemaDescriptionAsync();
                 }
 
+            /*
+             * MCP TOOL:
+             * validate_sql
+             */
+            case "validate_sql":
+                {
+                    if (!arguments.ContainsKey("sql"))
+                    {
+                        throw new ArgumentException(
+                            "sql argument is required.");
+                    }
+
+                    var sql =
+                        arguments["sql"]
+                            ?.ToString();
+
+                    if (string.IsNullOrWhiteSpace(sql))
+                    {
+                        throw new ArgumentException(
+                            "sql cannot be empty.");
+                    }
+
+                    var upper =
+                        sql.ToUpper();
+
+                    var dangerous =
+                        new[]
+                        {
+                        "INSERT",
+                        "UPDATE",
+                        "DELETE",
+                        "DROP",
+                        "ALTER",
+                        "TRUNCATE",
+                        "MERGE",
+                        "EXEC",
+                        "EXECUTE"
+                        };
+
+                    var violations =
+                        dangerous
+                            .Where(x =>
+                                upper.Contains(x))
+                            .ToList();
+
+                    return new
+                    {
+                        Sql = sql,
+
+                        IsValid =
+                            violations.Count == 0,
+
+                        Violations =
+                            violations
+                    };
+                }
+
+            /*
+             * MCP TOOL:
+             * execute_sql
+             */
             case "execute_sql":
                 {
                     if (!arguments.ContainsKey("sql"))
@@ -127,7 +218,7 @@ public class DatabaseMcpServerService
                     }
 
                     /*
-                     * Security validation.
+                     * Additional guardrail validation.
                      */
                     _guardrail.Validate(sql);
 
@@ -135,7 +226,8 @@ public class DatabaseMcpServerService
                      * Execute query.
                      */
                     var results =
-                        await _executor.ExecuteAsync(sql);
+                        await _executor
+                            .ExecuteAsync(sql);
 
                     return new
                     {
@@ -149,6 +241,10 @@ public class DatabaseMcpServerService
                     };
                 }
 
+            /*
+             * MCP TOOL:
+             * explain_sql
+             */
             case "explain_sql":
                 {
                     if (!arguments.ContainsKey("sql"))
@@ -161,12 +257,38 @@ public class DatabaseMcpServerService
                         arguments["sql"]
                             ?.ToString();
 
+                    string explanation;
+
+                    if (sql!.Contains("JOIN",
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        explanation =
+                            "The query joins multiple tables and retrieves matching records.";
+                    }
+                    else if (sql.Contains("GROUP BY",
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        explanation =
+                            "The query groups records and performs aggregation.";
+                    }
+                    else if (sql.Contains("ORDER BY",
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        explanation =
+                            "The query sorts the returned records.";
+                    }
+                    else
+                    {
+                        explanation =
+                            "The query retrieves records from the database.";
+                    }
+
                     return new
                     {
                         Sql = sql,
 
                         Explanation =
-                            "SQL explanation support will be implemented in Week 15 Day 4."
+                            explanation
                     };
                 }
 
