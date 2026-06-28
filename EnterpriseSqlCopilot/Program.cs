@@ -40,11 +40,16 @@ builder.Services.AddScoped<SqlGuardrailService>();
 builder.Services.AddScoped<SqlGenerationService>();
 builder.Services.AddScoped<
     SqlCopilotOrchestrator>();
-builder.Services
-    .AddScoped<
-        McpPlannerService>();
+
 builder.Services.AddScoped<
     SqlRepairService>();
+builder.Services.AddScoped<
+    AgentLoopService>();
+builder.Services.AddScoped<
+    AgentLoopService>();
+builder.Services
+    .AddScoped<
+        AgentLoopService>();
 //
 // MCP Client
 //
