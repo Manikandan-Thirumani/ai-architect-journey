@@ -9,4 +9,7 @@
     <Project Path="DatabaseMcpServer/DatabaseMcpServer.csproj" Id="94f4838d-3ea0-48ba-909a-125025c20e30" />
     <Project Path="EnterpriseSqlCopilot/EnterpriseSqlCopilot.csproj" Id="842c9e3a-30e7-4dd0-89c2-5443df699fd3" />
   </Folder>
+  <Folder Name="/Shopping/">
+    <Project Path="ShoppingMcpServer/ShoppingMcpServer.csproj" Id="43dbb4b0-66c5-4c51-84a5-d63649baecd3" />
+  </Folder>
 </Solution>
