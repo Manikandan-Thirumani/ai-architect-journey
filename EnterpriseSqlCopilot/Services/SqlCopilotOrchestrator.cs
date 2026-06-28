@@ -7,15 +7,20 @@ namespace EnterpriseSqlCopilot.Services;
 public class SqlCopilotOrchestrator
 {
     private readonly Kernel _kernel;
-
+    private readonly McpPlannerService _planner;
     private readonly McpClientService _mcp;
+    private readonly SqlRepairService _repair;
 
     public SqlCopilotOrchestrator(
         Kernel kernel,
-        McpClientService mcp)
+        McpClientService mcp,
+        McpPlannerService planner,
+        SqlRepairService repair)
     {
         _kernel = kernel;
         _mcp = mcp;
+        _planner = planner;
+        _repair = repair;
     }
 
     public async Task<object> AskAsync(
@@ -23,13 +28,10 @@ public class SqlCopilotOrchestrator
     {
         /*
          * STEP 1
-         * Discover MCP tools.
+         * Discover tools.
          */
         var tools =
             await _mcp.ListToolsAsync();
-
-        Console.WriteLine(
-            "Available MCP Tools:");
 
         Console.WriteLine(
             JsonSerializer.Serialize(
@@ -41,36 +43,78 @@ public class SqlCopilotOrchestrator
 
         /*
          * STEP 2
-         * Always discover schema.
+         * Build agent plan.
          */
-        const string planningDecision =
-            "FORCED_SCHEMA_DISCOVERY";
+        var plan =
+            await _planner
+                .CreatePlanAsync(
+                    tools,
+                    question);
 
         Console.WriteLine(
-            $"Planning Decision: {planningDecision}");
-
-        Console.WriteLine(
-            "Executing MCP Tool: get_schema");
-
-        var schema =
-            await _mcp.GetSchemaAsync();
-
-        Console.WriteLine(
-            "Schema:");
+            "Agent Plan:");
 
         Console.WriteLine(
             JsonSerializer.Serialize(
-                schema,
+                plan,
                 new JsonSerializerOptions
                 {
                     WriteIndented = true
                 }));
 
+        object? schema = null;
+        object? validation = null;
+        object? sqlResults = null;
+        object? explanation = null;
+
+        string generatedSql =
+            string.Empty;
+
+        string? originalSql =
+            null;
+
+        bool repaired =
+            false;
+
         /*
          * STEP 3
-         * Generate SQL.
+         * Execute plan.
          */
-        var sqlPrompt =
+        foreach (var step in plan)
+        {
+            Console.WriteLine(
+                $"Executing MCP Tool: {step.Tool}");
+
+            /*
+             * get_schema
+             */
+            if (step.Tool ==
+                "get_schema")
+            {
+                schema =
+                    await _mcp
+                        .CallToolAsync(
+                            step.Tool,
+                            step.Arguments);
+
+                Console.WriteLine(
+                    JsonSerializer.Serialize(
+                        schema,
+                        new JsonSerializerOptions
+                        {
+                            WriteIndented = true
+                        }));
+
+                continue;
+            }
+
+            /*
+             * Generate SQL once.
+             */
+            if (string.IsNullOrWhiteSpace(
+                    generatedSql))
+            {
+                var sqlPrompt =
 $"""
 You are an expert SQL Server assistant.
 
@@ -97,48 +141,124 @@ Question:
 {question}
 """;
 
-        var sqlResponse =
-            await _kernel
-                .InvokePromptAsync(
-                    sqlPrompt);
+                var sqlResponse =
+                    await _kernel
+                        .InvokePromptAsync(
+                            sqlPrompt);
 
-        var generatedSql =
-            sqlResponse
-                .ToString()
-                .Replace(
-                    "```sql",
-                    "")
-                .Replace(
-                    "```",
-                    "")
-                .Trim();
+                generatedSql =
+                    sqlResponse
+                        .ToString()
+                        .Replace(
+                            "```sql",
+                            "")
+                        .Replace(
+                            "```",
+                            "")
+                        .Trim();
 
-        Console.WriteLine(
-            "Generated SQL:");
+                originalSql =
+                    generatedSql;
 
-        Console.WriteLine(
-            generatedSql);
+                Console.WriteLine(
+                    "Generated SQL:");
+
+                Console.WriteLine(
+                    generatedSql);
+            }
+
+            step.Arguments =
+                new Dictionary<string, object>
+                {
+                    {
+                        "sql",
+                        generatedSql
+                    }
+                };
+
+            object? result =
+                null;
+
+            try
+            {
+                result =
+                    await _mcp
+                        .CallToolAsync(
+                            step.Tool,
+                            step.Arguments);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    "Tool execution failed:");
+
+                Console.WriteLine(
+                    ex.Message);
+
+                /*
+                 * Self-healing.
+                 */
+                if (step.Tool ==
+                    "execute_sql")
+                {
+                    repaired =
+                        true;
+
+                    generatedSql =
+                        await _repair
+                            .RepairSqlAsync(
+                                generatedSql,
+                                ex.Message,
+                                schema!,
+                                question);
+
+                    Console.WriteLine(
+                        "Repaired SQL:");
+
+                    Console.WriteLine(
+                        generatedSql);
+
+                    result =
+                        await _mcp
+                            .ExecuteSqlAsync(
+                                generatedSql);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            Console.WriteLine(
+                JsonSerializer.Serialize(
+                    result,
+                    new JsonSerializerOptions
+                    {
+                        WriteIndented = true
+                    }));
+
+            switch (step.Tool)
+            {
+                case "validate_sql":
+                    validation =
+                        result;
+                    break;
+
+                case "execute_sql":
+                    sqlResults =
+                        result;
+                    break;
+
+                case "explain_sql":
+                    explanation =
+                        result;
+                    break;
+            }
+        }
 
         /*
-         * STEP 4
-         * Validate SQL.
+         * Validation failed.
          */
-        Console.WriteLine(
-            "Executing MCP Tool: validate_sql");
-
-        var validation =
-            await _mcp
-                .ValidateSqlAsync(
-                    generatedSql);
-
-        Console.WriteLine(
-            JsonSerializer.Serialize(
-                validation,
-                new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                }));
-
         if (validation != null)
         {
             var validationJson =
@@ -146,17 +266,17 @@ Question:
                     validation);
 
             if (validationJson.Contains(
-                    "\"IsValid\":false",
-                    StringComparison
-                        .OrdinalIgnoreCase))
+                "\"IsValid\":false",
+                StringComparison
+                    .OrdinalIgnoreCase))
             {
                 return new
                 {
                     Question =
                         question,
 
-                    PlanningDecision =
-                        planningDecision,
+                    AgentPlan =
+                        plan,
 
                     GeneratedSql =
                         generatedSql,
@@ -171,28 +291,8 @@ Question:
         }
 
         /*
-         * STEP 5
-         * Execute SQL.
+         * Execution failed.
          */
-        Console.WriteLine(
-            "Executing MCP Tool: execute_sql");
-
-        var sqlResults =
-            await _mcp
-                .ExecuteSqlAsync(
-                    generatedSql);
-
-        Console.WriteLine(
-            "Raw Results:");
-
-        Console.WriteLine(
-            JsonSerializer.Serialize(
-                sqlResults,
-                new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                }));
-
         if (sqlResults == null)
         {
             return new
@@ -200,8 +300,8 @@ Question:
                 Question =
                     question,
 
-                PlanningDecision =
-                    planningDecision,
+                AgentPlan =
+                    plan,
 
                 GeneratedSql =
                     generatedSql,
@@ -209,36 +309,13 @@ Question:
                 Validation =
                     validation,
 
-                RawResults =
-                    sqlResults,
-
                 Answer =
                     "Unable to execute SQL."
             };
         }
 
         /*
-         * STEP 6
-         * Explain SQL.
-         */
-        Console.WriteLine(
-            "Executing MCP Tool: explain_sql");
-
-        var explanation =
-            await _mcp
-                .ExplainSqlAsync(
-                    generatedSql);
-
-        Console.WriteLine(
-            JsonSerializer.Serialize(
-                explanation,
-                new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                }));
-
-        /*
-         * STEP 7
+         * STEP 4
          * Summarize.
          */
         var summaryPrompt =
@@ -249,24 +326,15 @@ User Question:
 {question}
 
 SQL Explanation:
-
 {JsonSerializer.Serialize(explanation)}
 
 SQL Results:
-
 {JsonSerializer.Serialize(sqlResults)}
 
 Rules:
 - Use ONLY the SQL results.
-- Never invent customers,
-  balances,
-  dates,
-  or any values.
-- If there are no results,
-  return:
-  "No results found."
-- Produce a concise
-  natural language answer.
+- Never invent data.
+- Produce a concise answer.
 """;
 
         var answerResponse =
@@ -278,19 +346,19 @@ Rules:
             answerResponse
                 .ToString();
 
-        Console.WriteLine(
-            "Final Answer:");
-
-        Console.WriteLine(
-            answer);
-
         return new
         {
             Question =
                 question,
 
-            PlanningDecision =
-                planningDecision,
+            AgentPlan =
+                plan,
+
+            Repaired =
+                repaired,
+
+            OriginalSql =
+                originalSql,
 
             GeneratedSql =
                 generatedSql,
