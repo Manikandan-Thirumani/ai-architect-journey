@@ -10,6 +10,7 @@
     <Project Path="EnterpriseSqlCopilot/EnterpriseSqlCopilot.csproj" Id="842c9e3a-30e7-4dd0-89c2-5443df699fd3" />
   </Folder>
   <Folder Name="/Shopping/">
+    <Project Path="ShoppingAgentClient/ShoppingAgentClient.csproj" Id="df7503fc-a1e6-4ca3-882b-ebe15deea162" />
     <Project Path="ShoppingMcpServer/ShoppingMcpServer.csproj" Id="43dbb4b0-66c5-4c51-84a5-d63649baecd3" />
   </Folder>
 </Solution>

@@ -1,0 +1,6 @@
+@ShoppingAgentClient_HostAddress = http://localhost:5097
+
+GET {{ShoppingAgentClient_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

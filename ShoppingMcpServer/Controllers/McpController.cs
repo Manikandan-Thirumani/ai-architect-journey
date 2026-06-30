@@ -29,13 +29,14 @@ public class McpController : ControllerBase
         Console.WriteLine(
             "MCP REQUEST:");
 
-        Console.WriteLine(
-            JsonSerializer.Serialize(
-                request,
-                new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                }));
+        Console.WriteLine("====================");
+        Console.WriteLine("METHOD:");
+        Console.WriteLine(request.Method);
+
+        Console.WriteLine("PARAMS:");
+        Console.WriteLine(request.Params.ToString());
+
+        Console.WriteLine("====================");
 
         Console.WriteLine(
             "================================");
