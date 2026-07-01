@@ -1,28 +1,24 @@
 ﻿using Microsoft.SemanticKernel;
 using ShoppingAgentClient.MCP;
 using ShoppingAgentClient.Models;
+using System.Text.Json;
 
 namespace ShoppingAgentClient.Services;
 
 public class ShoppingAgent
 {
-    private readonly
-        ShoppingMcpClient
-            _mcp;
+    private readonly ShoppingMcpClient
+        _mcp;
 
-    private readonly
-        Kernel
-            _kernel;
+    private readonly Kernel
+        _kernel;
 
     public ShoppingAgent(
         ShoppingMcpClient mcp,
         Kernel kernel)
     {
-        _mcp =
-            mcp;
-
-        _kernel =
-            kernel;
+        _mcp = mcp;
+        _kernel = kernel;
     }
 
     public async Task<object>
@@ -31,17 +27,18 @@ public class ShoppingAgent
     {
         /*
          * STEP 1
-         * Discover tools.
+         * Discover tools
          */
         Console.WriteLine(
             "Discovering MCP tools");
 
-        await _mcp
-            .ListToolsAsync();
+        var tools =
+            await _mcp
+                .ListToolsAsync();
 
         /*
          * STEP 2
-         * Create memory.
+         * Create memory
          */
         var memory =
             new AgentMemory
@@ -52,219 +49,201 @@ public class ShoppingAgent
 
         /*
          * STEP 3
-         * Ask LLM to select tool.
+         * ReAct Loop
          */
-        var plannerPrompt =
-$$"""
-You are a shopping agent.
+        while (true)
+        {
+            var prompt = $$"""
+You are an AI shopping agent.
 
-Available tools:
-
-search_products
-get_product
-add_to_cart
-view_cart
-remove_from_cart
-place_order
-get_orders
-get_order
-cancel_order
-
-Question:
+User request:
 
 {{question}}
-
-Return ONLY ONE tool name.
 
 Examples:
 
-buy iphone
-search_products
+{
+    "finish":false,
+    "tool":"search_products",
+    "arguments":
+    {
+        "keyword":"iphone"
+    }
+}
 
-show cart
-view_cart
-
-place order
-place_order
-
-remove product
-remove_from_cart
-
-Question:
-
-{{question}}
-
-Answer:
+{
+    "finish":true,
+    "answer":"Order placed successfully"
+}
 """;
 
-        Console.WriteLine(
-            "Planner Prompt:");
+            Console.WriteLine(
+                "================================");
 
-        Console.WriteLine(
-            plannerPrompt);
+            Console.WriteLine(
+                "PROMPT:");
 
-        var response =
-            await _kernel
-                .InvokePromptAsync(
-                    plannerPrompt);
+            Console.WriteLine(
+                prompt);
 
-        var selectedTool =
-            response
-                .ToString()
-                .Trim()
-                .Replace(
-                    "\"",
-                    "");
+            Console.WriteLine(
+                "================================");
 
-        Console.WriteLine(
-            "Planner Response:");
+            /*
+             * STEP 4
+             * Ask LLM
+             */
+            var response =
+                await _kernel
+                    .InvokePromptAsync(
+                        prompt);
 
-        Console.WriteLine(
-            selectedTool);
+            var json =
+                response
+                    .ToString()
+                    .Replace(
+                        "```json",
+                        "")
+                    .Replace(
+                        "```",
+                        "")
+                    .Trim();
 
-        /*
-         * STEP 4
-         * Create decision.
-         */
-        var decision =
-            new ToolDecision
+            Console.WriteLine(
+                "LLM RESPONSE:");
+
+            Console.WriteLine(
+                json);
+
+            /*
+             * STEP 5
+             * Parse decision
+             */
+            AgentToolDecision?
+                decision;
+
+            try
             {
-                Tool =
-                    selectedTool,
-
-                Arguments =
-                    new Dictionary<string, object>()
-            };
-
-        /*
-         * STEP 5
-         * Build arguments.
-         */
-        switch (decision.Tool)
-        {
-            case "search_products":
+                decision =
+                    JsonSerializer
+                        .Deserialize<
+                            AgentToolDecision>(
+                                json);
+            }
+            catch
+            {
+                return new
                 {
-                    string keyword =
-                        ExtractKeyword(
-                            question);
+                    Question =
+                        question,
 
-                    decision
-                        .Arguments
-                        .Add(
-                            "keyword",
-                            keyword);
+                    Memory =
+                        memory,
 
-                    break;
-                }
+                    PlannerResponse =
+                        json,
 
-            case "view_cart":
+                    Error =
+                        "Planner failed"
+                };
+            }
+
+            if (decision == null)
+            {
+                return new
                 {
-                    break;
-                }
+                    Question =
+                        question,
 
-            case "place_order":
-                {
-                    break;
-                }
+                    Memory =
+                        memory,
 
-            case "get_orders":
-                {
-                    break;
-                }
+                    Error =
+                        "Planner returned null"
+                };
+            }
 
-            default:
+            /*
+             * STEP 6
+             * Finished?
+             */
+            if (decision
+                .Finish)
+            {
+                return new
                 {
-                    return new
+                    Question =
+                        question,
+
+                    Memory =
+                        memory,
+
+                    Answer =
+                        decision
+                            .Answer
+                };
+            }
+
+            /*
+             * STEP 7
+             * Execute MCP tool
+             */
+            object result;
+
+            try
+            {
+                result =
+                    await _mcp
+                        .CallToolAsync(
+                            decision.Tool,
+                            decision.Arguments);
+            }
+            catch (Exception ex)
+            {
+                result =
+                    ex.Message;
+            }
+
+            /*
+             * STEP 8
+             * Store observation
+             */
+            memory
+                .History
+                .Add(
+                    new AgentHistory
                     {
-                        Question =
-                            question,
+                        Step =
+                            memory
+                                .History
+                                .Count + 1,
 
-                        PlannerResponse =
-                            selectedTool,
+                        Tool =
+                            decision
+                                .Tool,
 
-                        Answer =
-                            "Unknown tool selected."
-                    };
-                }
+                        Result =
+                            result
+                    });
+
+            Console.WriteLine(
+                "================================");
+
+            Console.WriteLine(
+                "OBSERVATION:");
+
+            Console.WriteLine(
+                JsonSerializer
+                    .Serialize(
+                        result,
+                        new JsonSerializerOptions
+                        {
+                            WriteIndented =
+                                true
+                        }));
+
+            Console.WriteLine(
+                "================================");
         }
-
-        /*
-         * STEP 6
-         * Execute tool.
-         */
-        var result =
-            await _mcp
-                .CallToolAsync(
-                    decision.Tool,
-                    decision.Arguments);
-
-        /*
-         * STEP 7
-         * Save history.
-         */
-        memory
-            .History
-            .Add(
-                new AgentHistory
-                {
-                    Step = 1,
-
-                    Tool =
-                        decision.Tool,
-
-                    Result =
-                        result
-                });
-
-        /*
-         * STEP 8
-         * Return.
-         */
-        return new
-        {
-            Question =
-                question,
-
-            ToolDecision =
-                decision,
-
-            Memory =
-                memory,
-
-            Result =
-                result,
-
-            Answer =
-                "Tool executed."
-        };
-    }
-
-    private static string
-        ExtractKeyword(
-            string question)
-    {
-        question =
-            question
-                .ToLower();
-
-        if (question.Contains(
-                "iphone"))
-        {
-            return "iphone";
-        }
-
-        if (question.Contains(
-                "samsung"))
-        {
-            return "samsung";
-        }
-
-        if (question.Contains(
-                "laptop"))
-        {
-            return "laptop";
-        }
-
-        return question;
     }
 }

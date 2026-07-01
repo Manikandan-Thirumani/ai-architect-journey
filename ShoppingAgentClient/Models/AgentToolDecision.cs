@@ -1,7 +1,13 @@
 ﻿namespace ShoppingAgentClient.Models;
 
-public class ToolDecision
+public class AgentToolDecision
 {
+    public bool Finish
+    {
+        get;
+        set;
+    }
+
     public string Tool
     {
         get;
@@ -14,4 +20,10 @@ public class ToolDecision
         get;
         set;
     } = [];
+
+    public string Answer
+    {
+        get;
+        set;
+    } = "";
 }

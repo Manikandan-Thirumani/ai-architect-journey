@@ -1,15 +1,15 @@
 ﻿namespace ShoppingAgentClient.Models;
 
-public class AgentMemory
+public class AgentStep
 {
-    public string Question
+    public string Tool
     {
         get;
         set;
     } = "";
 
-    public List<AgentHistory>
-        History
+    public Dictionary<string, object>
+        Arguments
     {
         get;
         set;

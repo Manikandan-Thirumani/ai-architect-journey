@@ -3,8 +3,7 @@ using ShoppingAgentClient.MCP;
 using ShoppingAgentClient.Services;
 
 var builder =
-    WebApplication
-        .CreateBuilder(args);
+    WebApplication.CreateBuilder(args);
 
 /*
  * Controllers
@@ -31,25 +30,21 @@ builder.Services
 /*
  * Semantic Kernel
  */
-var kernelBuilder =
-    Kernel.CreateBuilder();
-
-kernelBuilder
-    .AddOllamaChatCompletion(
-        modelId: "phi3",
-        endpoint:
-            new Uri(
-                "http://localhost:11434"));
-
-var kernel =
-    kernelBuilder
-        .Build();
-
 builder.Services
-    .AddSingleton(
-        kernel);
+    .AddSingleton<Kernel>(sp =>
+    {
+        var kernelBuilder =
+            Kernel.CreateBuilder();
 
+        kernelBuilder
+            .AddOllamaChatCompletion(
+                modelId: "qwen2.5:7b",
+                endpoint:
+                    new Uri(
+                        "http://localhost:11434"));
 
+        return kernelBuilder.Build();
+    });
 
 /*
  * Shopping Agent
